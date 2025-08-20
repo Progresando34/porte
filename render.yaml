@@ -1,18 +1,46 @@
 services:
   - type: web
     name: porteytenenciaprogresando
-    env: php
+    env: docker
     plan: free
     buildCommand: |
       composer install --no-dev --optimize-autoloader
       php artisan key:generate
       php artisan config:cache
       php artisan route:cache
-    startCommand: vendor/bin/heroku-php-apache2 public/
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
     envVars:
       - key: APP_ENV
         value: production
+      - key: APP_KEY
+        generateValue: true
       - key: APP_DEBUG
         value: false
-      - key: LOG_CHANNEL
-        value: stderr
+      - key: APP_URL
+        value: https://porteytenenciaprogresando.onrender.com
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_HOST
+        fromDatabase:
+          name: db-porteytenencia
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: db-porteytenencia
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: db-porteytenencia
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: db-porteytenencia
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: db-porteytenencia
+          property: password
+
+databases:
+  - name: db-porteytenencia
+    plan: free
