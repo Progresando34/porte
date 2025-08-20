@@ -1,7 +1,7 @@
 services:
   - type: web
     name: porteytenenciaprogresando
-    runtime: php
+    runtime:  docker  # <--- Especifica que usarás un Dockerfile
     plan: free
     buildCommand: |
       composer install --no-dev --optimize-autoloader
@@ -9,3 +9,5 @@ services:
       php artisan config:cache
       php artisan route:cache
     startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+
+
