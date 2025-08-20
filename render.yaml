@@ -1,7 +1,7 @@
 services:
   - type: web
     name: porteytenenciaprogresando
-    env: php  # <-- ESTA ES LA CLAVE
+    runtime: php-8.2  # ¡Especifica la versión de PHP!
     plan: free
     buildCommand: |
       composer install --no-dev --optimize-autoloader
