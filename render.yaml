@@ -1,7 +1,7 @@
 services:
   - type: web
     name: porteytenenciaprogresando
-    runtime: php-8.2
+    env: php
     plan: free
     buildCommand: |
       composer install --no-dev --optimize-autoloader
