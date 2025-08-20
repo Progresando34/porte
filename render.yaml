@@ -1,17 +1,11 @@
 services:
   - type: web
     name: porteytenenciaprogresando
-    env: docker
+    env: php
     plan: free
-    buildCommand: docker build -t laravel-app .
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: APP_DEBUG
-        value: false
-      - key: APP_URL
-        value: https://porteytenenciaprogresando.onrender.com
-databases:
-  - name: porteytenencia-db
-    plan: free
-
+    buildCommand: |
+      composer install --no-dev --optimize-autoloader
+      php artisan key:generate
+      php artisan config:cache
+      php artisan route:cache
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
