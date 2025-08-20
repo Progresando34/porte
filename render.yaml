@@ -1,7 +1,6 @@
 services:
   - type: web
     name: porteytenenciaprogresando
-    runtime: php-8.2
     env: php
     plan: free
     buildCommand: |
@@ -9,7 +8,7 @@ services:
       php artisan key:generate
       php artisan config:cache
       php artisan route:cache
-    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    startCommand: php artisan serve --host 0.0.0.0 --port $PORT
     disk: 1024
     envVars:
       - key: APP_ENV
