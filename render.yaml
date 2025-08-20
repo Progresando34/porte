@@ -1,7 +1,7 @@
 services:
   - type: web
     name: porteytenenciaprogresando
-    runtime: php  # <--- ESTA ES LA LÍNEA CLAVE QUE DEBES CAMBIAR
+    runtime: php
     plan: free
     buildCommand: |
       composer install --no-dev --optimize-autoloader
