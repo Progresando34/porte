@@ -8,12 +8,4 @@ services:
       php artisan key:generate
       php artisan config:cache
       php artisan route:cache
-    startCommand: php artisan serve --host 0.0.0.0 --port $PORT
-    disk: 1024
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: APP_DEBUG
-        value: false
-      - key: LOG_CHANNEL
-        value: stderr
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
