@@ -1,87 +1,131 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión</title>
-    <!-- Agregar Bootstrap CDN para el diseño -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <style>
-        /* Establecer el fondo en el div principal que envuelve todo */
-        .background-container {
-            background-image: url('{{ asset("images/login") }}'); /* Ruta de la imagen */
-            background-size: cover; /* Hace que la imagen cubra toda la pantalla */
-            background-position: center; /* Centra la imagen */
-            background-attachment: fixed; /* Fija la imagen de fondo */
-            height: 100vh; /* Asegura que ocupe toda la altura de la ventana */
-            display: flex; /* Usamos flex para alinear el contenido */
-            justify-content: center; /* Centra el contenido horizontalmente */
-            align-items: center; /* Centra el contenido verticalmente */
-        }
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+    }
 
-        /* Fondo semi-transparente para la tarjeta */
-        .card {
-            background-color: rgba(255, 255, 255, 0.8); /* Fondo blanco con algo de transparencia */
-        }
+    .login-container {
+      display: flex;
+      height: 100vh;
+    }
 
-        /* Ajustar márgenes del contenedor */
-        .container {
-            z-index: 2; /* Asegura que la tarjeta esté por encima del fondo */
-            position: relative;
-        }
-    </style>
+    /* Panel izquierdo */
+    .left-panel {
+      background: linear-gradient(135deg, #9dff00ff, #004b10ff); /* Degradado azul */
+      color: white;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 50px;
+    }
+
+    .left-panel h1 {
+      font-size: 2.5rem;
+      font-weight: bold;
+    }
+
+    .left-panel p {
+      margin-top: 20px;
+      font-size: 1.1rem;
+      max-width: 350px;
+      text-align: center;
+    }
+
+    /* Panel derecho */
+    .right-panel {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+      background: #fff;
+    }
+
+    .card {
+      border: none;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .btn-google {
+      background: #fff;
+      border: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-google img {
+      width: 18px;
+      margin-right: 8px;
+    }
+
+    .text-small {
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
 <body>
-    <!-- Contenedor con imagen de fondo -->
-    <div class="background-container">
-        <div class="container mt-5">
-            <div class="row justify-content-center">
-                <div class="col-md-6">
-                    <div class="card shadow-lg border-0 rounded">
-                        <div class="card-body p-5">
-                            <h2 class="mb-4 text-center">Iniciar Sesión</h2>
+  <div class="login-container">
+   
+    
+    <!-- Panel izquierdo -->
+    <div class="left-panel">
+    <img src="{{ asset('images/lo.png') }}" 
+       alt="Logo" 
+       style="width:390px; margin-bottom:20px;">
 
-                            @if($errors->any())
-                                <div class="alert alert-danger">
-                                    <strong>¡Ups!</strong> Hay un problema con tus credenciales.<br><br>
-                                    <ul class="mb-0">
-                                        @foreach($errors->all() as $error)
-                                            <li>{{ $error }}</li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            @endif
-
-                            <form method="POST" action="{{ route('login') }}">
-                                @csrf
-
-                                <div class="form-group mb-3">
-                                    <label for="email">Correo electrónico</label>
-                                    <input type="email" class="form-control" name="email" value="{{ old('email') }}" required autofocus>
-                                </div>
-
-                                <div class="form-group mb-4">
-                                    <label for="password">Contraseña</label>
-                                    <input type="password" class="form-control" name="password" required>
-                                </div>
-
-                                <div class="d-flex justify-content-between">
-                                    <button type="submit" class="btn btn-primary">Iniciar sesión</button>
-                                </div>
-
-                                <div class="mt-3 text-center">
-                                    <!-- Aquí podrías agregar enlaces como "Olvidé mi contraseña" -->
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+      <h1>Bienvenido de nuevo,<br> EAGLE AMERICAN</h1>
+      <p>
+        
+      </p>
     </div>
 
-    <!-- Agregar JavaScript de Bootstrap -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Panel derecho -->
+    <div class="right-panel">
+      <div class="card shadow p-4">
+               <div class="text-center mb-3">
+      <img src="{{ asset('images/logoeagle.png') }}" 
+           alt="Logo"
+           style="width:180px; max-width:100%; height:auto;">
+    </div>
+
+
+        <h3 class="mb-3 text-center">Ingreso al Portal</h3>
+        <p class="text-center text-muted text-small">
+
+        </p>
+
+        <form method="POST" action="{{ route('login') }}">
+          @csrf
+          <div class="mb-3">
+            <input type="email" class="form-control" name="email" placeholder="Correo electrónico" required>
+          </div>
+          <div class="mb-3">
+            <input type="password" class="form-control" name="password" placeholder="Contraseña" required>
+          </div>
+          <button type="submit" class="btn btn-dark w-100">Iniciar sesión</button>
+
+          <button type="button" class="btn btn-google w-100 mt-2">
+          
+        </form>
+
+        <div class="mt-3 text-center">
+          <a href="#">¿Olvidaste tu contraseña?</a>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

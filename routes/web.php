@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Response;
 
 // Página de inicio
 Route::get('/', function () {
-    return view('welcome');
+    return view('auth/login');
 });
 
 
