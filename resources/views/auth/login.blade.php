@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Iniciar Sesión</title>
+  <title>Iniciar Sesión ...</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <style>
@@ -78,17 +78,17 @@
 </head>
 <body>
   <div class="login-container">
-   
-    
+
+
     <!-- Panel izquierdo -->
     <div class="left-panel">
-    <img src="{{ asset('images/lo.png') }}" 
-       alt="Logo" 
+    <img src="{{ asset('images/lo.png') }}"
+       alt="Logo"
        style="width:390px; margin-bottom:20px;">
 
       <h1>Bienvenido de nuevo,<br> EAGLE AMERICAN</h1>
       <p>
-        
+
       </p>
     </div>
 
@@ -96,7 +96,7 @@
     <div class="right-panel">
       <div class="card shadow p-4">
                <div class="text-center mb-3">
-      <img src="{{ asset('images/logoeagle.png') }}" 
+      <img src="{{ asset('images/logoeagle.png') }}"
            alt="Logo"
            style="width:180px; max-width:100%; height:auto;">
     </div>
@@ -118,7 +118,7 @@
           <button type="submit" class="btn btn-dark w-100">Iniciar sesión</button>
 
           <button type="button" class="btn btn-google w-100 mt-2">
-          
+
         </form>
 
         <div class="mt-3 text-center">
