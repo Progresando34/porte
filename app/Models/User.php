@@ -17,6 +17,7 @@ class User extends Authenticatable
         'email',
         'password',
         'profile_id', // Asegúrate de agregar esto si vas a llenar este campo al registrar
+    'avatar', // 👈 solo el nombre de la columna
     ];
 
     protected $hidden = [

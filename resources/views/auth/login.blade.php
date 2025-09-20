@@ -20,7 +20,7 @@
 
     /* Panel izquierdo */
     .left-panel {
-      background: linear-gradient(135deg, #9dff00ff, #004b10ff); /* Degradado azul */
+      background: linear-gradient(135deg, #9dff00ff, #004b10ff);
       color: white;
       flex: 1;
       display: flex;
@@ -28,18 +28,19 @@
       justify-content: center;
       align-items: center;
       padding: 50px;
+      text-align: center;
     }
 
     .left-panel h1 {
-      font-size: 2.5rem;
+      font-size: 2.2rem;
       font-weight: bold;
+      line-height: 1.3;
     }
 
     .left-panel p {
       margin-top: 20px;
-      font-size: 1.1rem;
+      font-size: 1rem;
       max-width: 350px;
-      text-align: center;
     }
 
     /* Panel derecho */
@@ -74,38 +75,77 @@
     .text-small {
       font-size: 0.9rem;
     }
+
+    /* Responsividad */
+    @media (max-width: 992px) {
+      .left-panel h1 {
+        font-size: 1.8rem;
+      }
+      .left-panel img {
+        width: 250px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .login-container {
+        flex-direction: column; /* Apila los paneles */
+        height: auto;
+      }
+
+      .left-panel {
+        padding: 30px 20px;
+      }
+
+      .left-panel h1 {
+        font-size: 1.6rem;
+      }
+
+      .left-panel img {
+        width: 180px; /* Logo más pequeño */
+        margin-bottom: 15px;
+      }
+
+      .right-panel {
+        padding: 20px;
+      }
+
+      .card {
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .left-panel h1 {
+        font-size: 1.3rem;
+      }
+      .left-panel img {
+        width: 150px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="login-container">
-   
-    
     <!-- Panel izquierdo -->
     <div class="left-panel">
-    <img src="{{ asset('images/lo.png') }}" 
-       alt="Logo" 
-       style="width:390px; margin-bottom:20px;">
+      <img src="{{ asset('images/lo.png') }}" 
+           alt="Logo" 
+           style="width:390px; max-width:90%; height:auto; margin-bottom:20px;">
 
-      <h1>Bienvenido de nuevo,<br> EAGLE AMERICAN</h1>
-      <p>
-        
-      </p>
+      <h1>Bienvenido de nuevo,<br> ingrese sus credenciales para continuar</h1>
+      <p></p>
     </div>
 
     <!-- Panel derecho -->
     <div class="right-panel">
       <div class="card shadow p-4">
-               <div class="text-center mb-3">
-      <img src="{{ asset('images/logoeagle.png') }}" 
-           alt="Logo"
-           style="width:180px; max-width:100%; height:auto;">
-    </div>
-
+        <div class="text-center mb-3">
+          <img src="{{ asset('images/logoi.png') }}" 
+               alt="Logo"
+               style="width:180px; max-width:100%; height:auto;">
+        </div>
 
         <h3 class="mb-3 text-center">Ingreso al Portal</h3>
-        <p class="text-center text-muted text-small">
-
-        </p>
 
         <form method="POST" action="{{ route('login') }}">
           @csrf
@@ -118,7 +158,8 @@
           <button type="submit" class="btn btn-dark w-100">Iniciar sesión</button>
 
           <button type="button" class="btn btn-google w-100 mt-2">
-          
+            <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" alt="Google"> Iniciar con Google
+          </button>
         </form>
 
         <div class="mt-3 text-center">

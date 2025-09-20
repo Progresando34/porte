@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Response;
 
 // Página de inicio
 Route::get('/', function () {
-    return view('auth/login');
+    return view('welcome');
 });
 
 
@@ -44,7 +44,8 @@ Route::post('/certificados', [CertificadoController::class, 'store'])->name('cer
 // Consulta de clientes
 Route::match(['GET', 'POST'], 'client/consulta', [ClientController::class, 'consulta'])->name('client.consulta');
 
-Route::get('/client/consultaArmas', [ClientController::class, 'consulta'])->name('client.consultaArmas');
+Route::get('/client/consultaArmas', [ArmaController::class, 'consulta'])->name('client.consultaArmas');
+
 Route::get('/consulta', [ClientController::class, 'consulta']); // Esta puede ser opcional si la anterior es suficiente
 
 
@@ -59,7 +60,7 @@ Route::resource('armas', ArmaController::class);
 Route::get('/armas/ver/{filename}', [ArmaController::class, 'ver'])->name('armas.ver.certificado');
 Route::get('/armas/descargar/{filename}', [ArmaController::class, 'descargar'])->name('armas.descargar.certificado');
                                                                        
-Route::get('/client/consultaArmas', [ClientController::class, 'consultaArmas'])->name('client.consultaArmas');
+//Route::get('/client/consultaArmas', [ClientController::class, 'consultaArmas'])->name('client.consultaArmas');
 
 
 Route::get('/usuarios/crear', [UserController::class, 'create'])->name('usuarios.create');

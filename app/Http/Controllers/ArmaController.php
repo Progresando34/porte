@@ -101,22 +101,25 @@ public function consulta(Request $request)
 
     $filtro = $request->input('filtro');
     $valor = $request->input('valor');
-    $cedulasInput = $request->input('cedulas', []);
+$cedulasInput = $request->input('cedulas_multiple', []);
+
 
     Log::info('🧾 CedulasInput:', $cedulasInput);
 
     $filtrosPermitidos = ['nombre', 'cedula', 'codigo_control'];
 
-    if (is_array($cedulasInput) && count(array_filter($cedulasInput)) > 0) {
-        $cedulas = array_map('trim', array_filter($cedulasInput));
-        Log::info('🔍 Cedulas limpias:', $cedulas);
+if (is_array($cedulasInput) && count(array_filter($cedulasInput)) > 0) {
+    $cedulas = array_map('trim', array_filter($cedulasInput));
+    Log::info('🔍 Cedulas limpias:', $cedulas);
 
-        $clientes = DB::table('armas')
-            ->whereIn('cedula', $cedulas)
-            ->get();
+    $clientes = DB::table('armas')
+        ->whereIn('cedula', $cedulas)
+        ->orWhereIn('cedula', $cedulas)
+        ->get();
 
-        Log::info('📦 Total resultados:', ['count' => $clientes->count()]);
-    } elseif ($filtro && $valor && in_array($filtro, $filtrosPermitidos)) {
+    Log::info('📦 Total resultados:', ['count' => $clientes->count()]);
+}
+elseif ($filtro && $valor && in_array($filtro, $filtrosPermitidos)) {
         Log::info("🔍 Búsqueda simple por $filtro = $valor");
 
         $clientes = DB::table('armas')
