@@ -1,0 +1,52 @@
+name: 🚀 Deploy project
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  web-deploy:
+    name: 🎉 Deploy to Hostinger
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout latest code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20' # Asegúrate de usar la versión correcta de Node.js
+
+      - name: Install Node.js dependencies
+        run: npm install
+
+      - name: Build assets for production
+        run: npm run build
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2' # Usa la versión de PHP que corresponda a tu proyecto
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Sync files to Hostinger
+        uses: SamKirkland/FTP-Deploy-Action@4.3.0
+        with:
+          server: ${{ secrets.FTP_SERVER_NAME }}
+          username: ${{ secrets.FTP_USER_NAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          dangerous-clean-slate: false
+          log-level: verbose
+          protocol: ftps
+          timeout: 120001
+          local-dir: ./
+          exclude: |
+            **/vendor/**
+            **/.env*
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
