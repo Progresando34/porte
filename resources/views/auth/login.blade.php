@@ -130,7 +130,7 @@
     <div class="left-panel">
       <img src="{{ asset('images/lo.png') }}" 
            alt="Logo" 
-           style="width:390px; max-width:90%; height:auto; margin-bottom:20px;">
+           style="width:600px; max-width:100%; height:auto; margin-bottom:20px;">
 
       <h1>Bienvenido de nuevo,<br> ingrese sus credenciales para continuar</h1>
       <p></p>
@@ -157,13 +157,11 @@
           </div>
           <button type="submit" class="btn btn-dark w-100">Iniciar sesión</button>
 
-          <button type="button" class="btn btn-google w-100 mt-2">
-            <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" alt="Google"> Iniciar con Google
-          </button>
+  
         </form>
 
         <div class="mt-3 text-center">
-          <a href="#">¿Olvidaste tu contraseña?</a>
+        
         </div>
       </div>
     </div>

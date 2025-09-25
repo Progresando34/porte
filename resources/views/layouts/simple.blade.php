@@ -17,7 +17,7 @@
             height: 100vh;
             position: fixed;
             top: 0; left: 0;
-            background-color: rgba(20, 173, 0, 1);
+            background-color: rgba(80, 201, 0, 1);
             color: white;
             padding: 20px 15px;
             transition: transform 0.3s ease;
@@ -50,7 +50,7 @@
             .toggle-btn {
                 position: fixed; top: 15px; left: 15px;
                 z-index: 1100;
-                background: rgba(20, 173, 0, 1);
+                background: rgba(123, 255, 0, 1);
                 border: none; color: white;
                 font-size: 1.5rem; border-radius: 5px;
                 padding: 5px 10px;
@@ -69,13 +69,28 @@
 
     {{-- Sidebar --}}
     <div class="sidebar" id="sidebar">
+        
         <div class="text-center mb-4">
-            @if(Auth::check() && Auth::user()->avatar)
-                <img src="{{ Storage::url(Auth::user()->avatar) }}" class="img-fluid rounded-circle" style="max-width: 120px;">
-            @else
-                <img src="{{ asset('images/default_avatar.png') }}" class="img-fluid rounded-circle" style="max-width: 120px;">
-            @endif
-        </div>
+            
+
+<div class="text-center mb-4 position-relative d-flex flex-column align-items-center">
+    {{-- Imagen fija arriba --}}
+    <img src="{{ asset('images/lo.png') }}" 
+         class="fixed-logo mb-3"
+         style="width: 180px; max-width: 100%;">
+
+    {{-- Avatar --}}
+    @if(Auth::check() && Auth::user()->avatar)
+        <img src="{{ Storage::url(Auth::user()->avatar) }}" 
+             class="img-fluid rounded-circle" 
+             style="width: 170px; height: 170px; object-fit: cover;">
+    @else
+        <img src="{{ asset('images/default_avatar.png') }}" 
+             class="img-fluid rounded-circle" 
+             style="width: 120px; height: 120px; object-fit: cover;">
+    @endif
+</div>
+
 
         <div class="text-center mb-4">
             @if(Auth::check())

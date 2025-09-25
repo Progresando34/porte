@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage; // ✅ Importación correcta
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log; // ✅ Esto soluciona el error
+use Carbon\Carbon;
 class ArmaController extends Controller
 {
  
@@ -25,39 +26,31 @@ public function store(Request $request)
     Log::info('Entró al método store');
 
     try {
+        // ✅ Guardar los datos reales del formulario
         DB::connection('mysql')->table('armas')->insert([
-            'nombre' => 'Prueba',
-            'cedula' => '123456',
-            'codigo_control' => 'abc123',
-            'activo' => true,
-            'fecha_atencion' => now(),
-            'certificado' => null,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'nombre'         => $request->input('nombre'),
+            'cedula'         => $request->input('cedula'),
+            'codigo_control' => $request->input('codigo_control'),
+            'activo'         => $request->has('activo'), // checkbox
+            'fecha_atencion' => $request->input('fecha_atencion') ?? now(),
+            'certificado'    => $request->file('certificado') 
+                                    ? $request->file('certificado')->store('certificados', 'public')
+                                    : null,
+            'created_at'     => now(),
+            'updated_at'     => now(),
         ]);
 
         Log::info('Insert en base primaria exitoso');
 
+        // Verificar conexión secundaria (si la usas para algo)
         try {
-    DB::connection('secundaria')->getPdo();
-    Log::info('✅ Conexión secundaria exitosa');
-} catch (\Exception $e) {
-    Log::error('❌ Fallo conexión secundaria: ' . $e->getMessage());
-}
+            DB::connection('secundaria')->getPdo();
+            Log::info('✅ Conexión secundaria exitosa');
+        } catch (\Exception $e) {
+            Log::error('❌ Fallo conexión secundaria: ' . $e->getMessage());
+        }
 
-        DB::connection('secundaria')->table('armas')->insert([
-            'nombre' => 'Prueba',
-            'cedula_trabajador' => '123456',
-            'codigo_numero_control' => 'abc123',
-            'status' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-            'certificado' => null,
-        ]);
-
-        Log::info('Insert en base secundaria exitoso');
-
-        return redirect()->back()->with('success', 'Registro de prueba exitoso.');
+        return redirect()->back()->with('success', 'Registro creado correctamente.');
     } catch (\Exception $e) {
         Log::error('Error en inserción: ' . $e->getMessage());
         return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
@@ -94,6 +87,9 @@ public function store(Request $request)
 
 public function consulta(Request $request)
 {
+
+        Carbon::setLocale('es');
+        
     Log::info('✅ consultaArmas fue invocada');
     Log::info('📥 Datos recibidos:', $request->all());
 

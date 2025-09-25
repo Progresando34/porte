@@ -41,7 +41,7 @@
 
     <div class="col-12 col-md-4 d-flex flex-column justify-content-end">
 <button type="button" id="toggleCedulasBtn"
-        class="btn btn-outline-primary btn-sm mb-2 w-100">
+      class="btn btn-outline-success btn-sm mb-2 w-100">
     Buscar por múltiples cédulas
 </button>
 
@@ -78,7 +78,7 @@
                     <td>{{ $cliente->nombre }}</td>
                     <td>{{ $cliente->cedula }}</td>
                     <td>{{ $cliente->codigo_control }}</td>
-                    <td>{{ $cliente->fecha_atencion ? \Carbon\Carbon::parse($cliente->fecha_atencion)->format('d/m/Y') : 'Sin fecha' }}</td>
+                    <td>  {{ \Carbon\Carbon::parse($cliente->fecha_atencion)->translatedFormat('l, d \d\e F \d\e Y') }}</td>
                     <td>
                         @if($cliente->activo)
                             <span class="badge" style="background-color: #04af0dff; color: white;">Apto</span>
