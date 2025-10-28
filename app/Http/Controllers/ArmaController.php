@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Http\Controllers;
+use ZipArchive;
+use Illuminate\Support\Facades\Response;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage; // ✅ Importación correcta
@@ -145,4 +147,42 @@ elseif ($filtro && $valor && in_array($filtro, $filtrosPermitidos)) {
     {
   return Storage::download('certificados/' . $filename);
     }
+
+
+    public function descargarMultiples(Request $request)
+{
+    $cedulas = $request->input('cedulas', []);
+
+    if (empty($cedulas)) {
+        return redirect()->back()->with('error', 'No se recibieron cédulas para descargar.');
+    }
+
+    // Buscar todos los registros con esas cédulas
+    $clientes = DB::table('armas')
+        ->whereIn('cedula', $cedulas)
+        ->get();
+
+    if ($clientes->isEmpty()) {
+        return redirect()->back()->with('error', 'No se encontraron certificados.');
+    }
+
+    $zip = new ZipArchive;
+    $zipFileName = 'certificados_' . now()->format('Ymd_His') . '.zip';
+    $zipPath = storage_path('app/public/' . $zipFileName);
+
+    if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+        foreach ($clientes as $cliente) {
+            if ($cliente->certificado && Storage::disk('public')->exists($cliente->certificado)) {
+                $filePath = Storage::disk('public')->path($cliente->certificado);
+                $zip->addFile($filePath, basename($cliente->certificado));
+            }
+        }
+        $zip->close();
+    } else {
+        return redirect()->back()->with('error', 'No se pudo crear el archivo ZIP.');
+    }
+
+    return response()->download($zipPath)->deleteFileAfterSend(true);
+}
+
 }

@@ -60,6 +60,19 @@
                 @if(isset($clientes) && count($clientes) > 0)
                     <h4 class="mb-3">Resultados de la búsqueda</h4>
 
+
+@if(isset($clientes) && count($clientes) > 0 && request()->has('cedulas_multiple'))
+    <form action="{{ route('descargar.multiples') }}" method="GET" class="mb-3">
+        @foreach(request()->input('cedulas_multiple', []) as $cedula)
+            <input type="hidden" name="cedulas[]" value="{{ $cedula }}">
+        @endforeach
+        <button type="submit" class="btn btn-outline-success">
+             Descargar todos los certificados
+        </button>
+    </form>
+@endif
+
+
                    <div class="table-responsive">
     <table class="table table-bordered mt-4 shadow-sm">
         <thead class="table-light">

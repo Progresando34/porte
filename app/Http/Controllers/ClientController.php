@@ -18,7 +18,8 @@ class ClientController extends Controller
             if ($filtro === 'nombre') {
                 $clientes = Client::where('nombre', 'like', '%' . $valor . '%')->get();
             } elseif ($filtro === 'cedula') {
-                $clientes = Client::where('cedula', $valor)->get();
+             $clientes = Client::whereRaw('BINARY TRIM(cedula) = ?', [$valor])->get();
+
             }
         }
 

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth; // ✅ Agregado
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AuthController;
 
+use App\Http\Controllers\CertificadoEController;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -70,7 +71,14 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login.form
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+Route::get('/descargar-multiples-certificados', [ArmaController::class, 'descargarMultiples'])->name('descargar.multiples');
 
+Route::get('/certificados_e', [CertificadoEController::class, 'index'])->name('certificados_e.index');
+
+
+Route::post('/certificados_e/buscar', [CertificadoEController::class, 'buscar'])->name('certificados_e.buscar');
+
+Route::get('/certificados/descargar-multiples', [CertificadoEController::class, 'descargarMultiples'])->name('certificados_e.descargarMultiples');
 Route::get('/debug-test', function () {
     Log::info('🧪 RUTA DE PRUEBA FUNCIONA');
     return '✅ Esta ruta está activa';

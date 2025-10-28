@@ -73,33 +73,47 @@
         <div class="text-center mb-4">
             
 
-<div class="text-center mb-4 position-relative d-flex flex-column align-items-center">
-    {{-- Imagen fija arriba --}}
-    <img src="{{ asset('images/lo.png') }}" 
-         class="fixed-logo mb-3"
-         style="width: 180px; max-width: 100%;">
+<div class="text-center mb-4 position-relative d-flex flex-row justify-content-center align-items-center gap-2">
+    {{-- Logo --}}
+    <img src="{{ asset('images/logoblanco.png') }}" 
+         class="fixed-logo"
+         style="width: 80px; height: auto;">
 
     {{-- Avatar --}}
     @if(Auth::check() && Auth::user()->avatar)
         <img src="{{ Storage::url(Auth::user()->avatar) }}" 
              class="img-fluid rounded-circle" 
-             style="width: 170px; height: 170px; object-fit: cover;">
+             style="width: 80px; height: 80px; object-fit: cover;">
     @else
         <img src="{{ asset('images/default_avatar.png') }}" 
              class="img-fluid rounded-circle" 
-             style="width: 120px; height: 120px; object-fit: cover;">
+             style="width: 80px; height: 80px; object-fit: cover;">
     @endif
 </div>
 
 
-        <div class="text-center mb-4">
+        <div class="text-start mb-4">
             @if(Auth::check())
-                <h6 class="text-white">Bienvenido, {{ Auth::user()->name }}</h6>
-                <small class="text-light">Perfil: {{ Auth::user()->profile->name ?? 'Sin perfil' }}</small>
+     <h6 class="text-white" style="font-weight: normal;">
+    Bienvenido, {{ Auth::user()->name }}
+</h6>
+
+               
             @endif
         </div>
 
-        <h6 class="text-black mb-3">Porte y Tenencia de Armas</h6>
+
+     {{-- Botón de Logout --}}
+<div class="text-center mb-4">
+    <form method="POST" action="{{ route('logout') }}">
+        @csrf
+   <button type="submit" class="btn w-100" style="background-color: #b8c9b8ff; color: black;">
+            <i class="fas fa-sign-out-alt me-2"></i> Cerrar sesión
+        </button>
+    </form>
+</div>
+
+
     </div>
 
     {{-- Contenido principal --}}

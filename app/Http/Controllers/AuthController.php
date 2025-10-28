@@ -12,31 +12,33 @@ class AuthController extends Controller
     {
         return view('auth.login'); // Asegúrate de tener esta vista
     }
-public function login(Request $request)
-{
-    $credentials = $request->only('email', 'password');
+    public function login(Request $request)
+    {
+        $credentials = $request->only('email', 'password');
 
-    if (Auth::attempt($credentials)) {
-        $user = Auth::user();
+        if (Auth::attempt($credentials)) {
+            $user = Auth::user();
 
-        // Asegurarse de cargar el perfil
-        $user->load('profile');
+            // Si el usuario tiene relación con perfil, la cargamos
+            $user->load('profile');
 
-        // Redirige según el perfil
-        if ($user->profile && $user->profile->name === 'sanidad') {
-            return redirect('/consultaArmas');
-        } elseif ($user->profile && $user->profile->name === 'admin') {
-            return redirect('/admin/dashboard');
-        } else {
-            return redirect('/');
+            // 🔹 Redirección según el perfil del usuario
+            if ($user->profile && $user->profile->name === 'sanidad') {
+                return redirect('/consultaArmas');
+            } elseif ($user->profile && $user->profile->name === 'admin') {
+                return redirect('/admin/dashboard');
+            } elseif ($user->profile && $user->profile->name === 'cliente') {
+              return redirect()->route('certificados_e.index');
+
+            } else {
+                return redirect('/');
+            }
         }
+
+        return back()->withErrors([
+            'email' => 'Las credenciales no coinciden con nuestros registros.',
+        ])->withInput();
     }
-
-    return back()->withErrors([
-        'email' => 'Las credenciales no coinciden con nuestros registros.',
-    ])->withInput();
-}
-
 
     public function logout(Request $request)
     {
