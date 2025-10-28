@@ -10,7 +10,7 @@ class CertificadoEController extends Controller
 {
     public function index()
     {
-        return view('certificados_e.buscar');
+        return view('certificados_e.index');
     }
 
 public function buscar(Request $request)
