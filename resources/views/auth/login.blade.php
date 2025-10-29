@@ -132,6 +132,7 @@
            alt="Logo" 
            style="width:600px; max-width:100%; height:auto; margin-bottom:20px;">
 
+      <h1>Bienvenido de nuevo,<br> ingrese sus credenciales para continuar</h1>
       <p></p>
     </div>
 
