@@ -103,7 +103,7 @@
 
     <!-- ✅ Contenedor de logos -->
     <div class="logos-container">
-        <img src="{{ asset('images/logo.jpg') }}" alt="Logo 1">
+        <img src="{{ asset('images/logo.png') }}" alt="Logo 1">
         <img src="{{ asset('images/hos.png') }}" alt="Logo 2">
     </div>
 
