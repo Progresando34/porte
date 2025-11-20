@@ -29,13 +29,7 @@
             margin-bottom: 20px;
         }
 
-        .logos-container img {
-            width: 250px;         /* tamaño fijo y proporcional */
-            max-width: 40%;       /* no más del 40% del contenedor */
-            height: auto;         /* mantiene proporción */
-            object-fit: contain;  /* evita deformaciones */
-        }
-
+    
         .cedula-block {
             margin-bottom: 30px;
             border: 1px solid #ddd;
@@ -104,7 +98,8 @@
     <!-- ✅ Contenedor de logos -->
     <div class="logos-container">
         <img src="{{ asset('images/logo.png') }}" alt="Logo 1">
-        <img src="{{ asset('images/hos.png') }}" alt="Logo 2">
+     
+      
     </div>
 
     <h2>Certificados encontrados</h2>
