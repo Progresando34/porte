@@ -113,7 +113,11 @@
                 <button type="submit" class="download-btn">Descargar certificados de esta cédula</button>
             </form>
 
+<<<<<<< HEAD
 <!-- Reemplazar la tabla actual con esta: -->
+=======
+ <!-- Reemplazar la tabla actual con esta: -->
+>>>>>>> 783bbe48ab36098515eeba52b0b351c3ee6f5f6c
 <table>
     <thead>
         <tr>
@@ -137,8 +141,11 @@
         @endforeach
     </tbody>
 </table>
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 783bbe48ab36098515eeba52b0b351c3ee6f5f6c
         </div>
     @endforeach
 
