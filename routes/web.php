@@ -43,15 +43,28 @@ Route::get('/consultaArmas', [ArmaController::class, 'consulta']);
 
 
 
-// Rutas para certificados empresariales
-Route::get('/certificados-empresariales', [CertificadoEController::class, 'index'])->name('certificados_e.index');
-Route::post('/certificados-empresariales/buscar', [CertificadoEController::class, 'buscar'])->name('certificados_e.buscar');
-Route::get('/certificados-empresariales/descargar-multiples', [CertificadoEController::class, 'descargarMultiples'])->name('certificados_e.descargarMultiples');
 
-// Rutas para visualizar y descargar documentos desde BLOB
+// Rutas principales para certificados empresariales
+Route::prefix('certificados-empresariales')->group(function () {
+    Route::get('/', [CertificadoEController::class, 'index'])->name('certificados_e.index');
+    Route::post('/buscar', [CertificadoEController::class, 'buscar'])->name('certificados_e.buscar');
+    Route::get('/descargar-multiples', [CertificadoEController::class, 'descargarMultiples'])->name('certificados_e.descargarMultiples');
+});
+
+// Rutas para ver/descargar documentos individuales
 Route::get('/documento/{id}/ver', [CertificadoEController::class, 'verDocumento'])->name('documento.ver');
 Route::get('/documento/{id}/descargar', [CertificadoEController::class, 'descargarDocumento'])->name('documento.descargar');
 
+// Ruta de prueba para depuración
+Route::get('/test-certificados', function() {
+    return view('certificados_e.index');
+});
+
+// Ruta para debug de estructura
+Route::get('/debug-estructura', [CertificadoEController::class, 'debugEstructura']);
+
+// Ruta para verificar que el controlador funciona
+Route::get('/test-controlador', [CertificadoEController::class, 'index']);
 
 // CRUD completo para armas
 Route::resource('armas', ArmaController::class);
