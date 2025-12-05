@@ -145,7 +145,8 @@
         </div>
 
         <h3 class="mb-3 text-center">Ingreso al Portal</h3>
-        <h1>jjjjjjjjjjjjjjjjjjjjjjj</h1>
+       
+        <h3>hola bienvenido *********</h3>
 
         <form method="POST" action="{{ route('login') }}">
           @csrf
