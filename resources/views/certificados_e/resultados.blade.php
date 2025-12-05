@@ -113,22 +113,32 @@
                 <button type="submit" class="download-btn">Descargar certificados de esta cédula</button>
             </form>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nombre del archivo</th>
-                        <th>Ver / Descargar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($archivos as $archivo)
-                        <tr>
-                            <td>{{ $archivo->nombre_archivo }}</td>
-                            <td><a href="{{ $archivo->url }}" target="_blank">Ver PDF</a></td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+<!-- Reemplazar la tabla actual con esta: -->
+<table>
+    <thead>
+        <tr>
+            <th>Nombre del archivo</th>
+            <th>Descripción</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach ($archivos as $archivo)
+            <tr>
+                <td>{{ $archivo->nombre_archivo }}</td>
+                <td>{{ $archivo->descripcion }}</td>
+                <td>{{ $archivo->fecha ?: 'Sin fecha' }}</td>
+                <td>
+                    <a href="{{ $archivo->url }}" target="_blank" style="margin-right: 10px;">📄 Ver</a>
+                    <a href="{{ $archivo->descargar_url }}">⬇️ Descargar</a>
+                </td>
+            </tr>
+        @endforeach
+    </tbody>
+</table>
+
+
         </div>
     @endforeach
 

@@ -40,6 +40,19 @@ Route::get('/client/consultaArmas', [ArmaController::class, 'consulta'])->name('
 Route::get('/consulta', [ClientController::class, 'consulta']);
 Route::get('/consultaArmas', [ArmaController::class, 'consulta']);
 
+
+
+
+// Rutas para certificados empresariales
+Route::get('/certificados-empresariales', [CertificadoEController::class, 'index'])->name('certificados_e.index');
+Route::post('/certificados-empresariales/buscar', [CertificadoEController::class, 'buscar'])->name('certificados_e.buscar');
+Route::get('/certificados-empresariales/descargar-multiples', [CertificadoEController::class, 'descargarMultiples'])->name('certificados_e.descargarMultiples');
+
+// Rutas para visualizar y descargar documentos desde BLOB
+Route::get('/documento/{id}/ver', [CertificadoEController::class, 'verDocumento'])->name('documento.ver');
+Route::get('/documento/{id}/descargar', [CertificadoEController::class, 'descargarDocumento'])->name('documento.descargar');
+
+
 // CRUD completo para armas
 Route::resource('armas', ArmaController::class);
 

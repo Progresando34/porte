@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use ZipArchive;
-
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\DB; // ✅ AÑADE ESTA LÍNEA
 
 class CertificadoEController extends Controller
 {
@@ -15,168 +13,211 @@ class CertificadoEController extends Controller
         return view('certificados_e.index');
     }
 
-public function buscar(Request $request)
-{
-    $cedulasInput = $request->input('cedulas_multiple', []);
-    $cedulaSimple = $request->input('cedula', '');
-    $resultados = [];
+    public function buscar(Request $request)
+    {
+        $cedulasInput = $request->input('cedulas_multiple', []);
+        $cedulaSimple = $request->input('cedula', '');
+        $resultados = [];
 
-    // ✅ Procesar múltiples cédulas
-    if (is_array($cedulasInput) && count(array_filter($cedulasInput)) > 0) {
-        foreach ($cedulasInput as $cedulaRaw) {
-            $cedula = preg_replace('/[^0-9]/', '', trim($cedulaRaw));
-            
-            // BUSCAR EN EL SISTEMA DE ARCHIVOS (MANTENER LO EXISTENTE)
-            $path = public_path("storage/RESULTADOS/{$cedula}");
-            if (is_dir($path)) {
-                $archivos = glob($path . '/*.pdf');
-                if (!empty($archivos)) {
-                    $resultados[$cedula] = $resultados[$cedula] ?? [];
-                    foreach ($archivos as $archivo) {
-                        $nombre = basename($archivo);
-                        $info = $this->interpretarCertificado($nombre);
+        // ✅ Procesar múltiples cédulas
+        if (is_array($cedulasInput) && count(array_filter($cedulasInput)) > 0) {
+            foreach ($cedulasInput as $cedulaRaw) {
+                $cedula = preg_replace('/[^0-9]/', '', trim($cedulaRaw));
+                
+                // ✅ BUSCAR SOLO EN LA BASE DE DATOS - BLOB
+                $documentosDB = DB::table('documentos_empresas')
+                    ->where('cedula', $cedula)
+                    ->get();
+                
+                if ($documentosDB->isNotEmpty()) {
+                    $resultados[$cedula] = [];
+                    foreach ($documentosDB as $doc) {
+                        // Interpretar el nombre del archivo para obtener descripción y fecha
+                        $info = $this->interpretarCertificado($doc->nombre_archivo ?? 'documento.pdf');
                         
                         $resultados[$cedula][] = (object)[
-                            'nombre_archivo' => $nombre,
-                            'url' => asset("storage/RESULTADOS/{$cedula}/{$nombre}"),
+                            'nombre_archivo' => $doc->nombre_archivo ?? 'documento.pdf',
+                            'url' => route('documento.ver', ['id' => $doc->id]), // Ruta para ver el BLOB
+                            'descargar_url' => route('documento.descargar', ['id' => $doc->id]), // Ruta para descargar
                             'descripcion' => $info['descripcion'],
                             'fecha' => $info['fecha'],
                             'tipo' => $info['prefijo'],
-                            'origen' => 'archivos'
+                            'fecha_creacion' => $doc->created_at ? (is_string($doc->created_at) ? $doc->created_at : $doc->created_at->format('Y-m-d H:i:s')) : '',
+                            'origen' => 'base_datos',
+                            'id' => $doc->id,
+                            'datos_db' => $doc
                         ];
                     }
                 }
             }
+        }
+        // ✅ Procesar una sola cédula
+        elseif (!empty($cedulaSimple)) {
+            $cedula = preg_replace('/[^0-9]/', '', $cedulaSimple);
             
-            // ✅ BUSCAR EN LA BASE DE DATOS (NUEVO)
-           $documentosDB = DB::table('documentos_empresas')
-
+            // ✅ BUSCAR SOLO EN LA BASE DE DATOS - BLOB
+            $documentosDB = DB::table('documentos_empresas')
                 ->where('cedula', $cedula)
                 ->get();
             
             if ($documentosDB->isNotEmpty()) {
-                $resultados[$cedula] = $resultados[$cedula] ?? [];
-                foreach ($documentosDB as $doc) {
-                    $resultados[$cedula][] = (object)[
-                        'nombre_archivo' => $doc->nombre_archivo ?? basename($doc->ruta),
-                        'url' => $this->obtenerUrlDocumento($doc),
-                        'descripcion' => $doc->descripcion ?? 'Documento empresarial',
-                        'fecha' => $doc->created_at ? $doc->created_at->format('Y-m-d') : '',
-                        'tipo' => $doc->tipo_documento ?? 'EMP',
-                        'origen' => 'base_datos',
-                        'datos_db' => $doc // Guardar el objeto completo por si necesitas más datos
-                    ];
-                }
-            }
-        }
-    }
-
-    // ✅ Procesar una sola cédula
-    elseif (!empty($cedulaSimple)) {
-        $cedula = preg_replace('/[^0-9]/', '', $cedulaSimple);
-        
-        // BUSCAR EN EL SISTEMA DE ARCHIVOS
-        $path = public_path("storage/RESULTADOS/{$cedula}");
-        if (is_dir($path)) {
-            $archivos = glob($path . '/*.pdf');
-            if (!empty($archivos)) {
                 $resultados[$cedula] = [];
-                foreach ($archivos as $archivo) {
-                    $nombre = basename($archivo);
-                    $info = $this->interpretarCertificado($nombre);
+                foreach ($documentosDB as $doc) {
+                    // Interpretar el nombre del archivo
+                    $info = $this->interpretarCertificado($doc->nombre_archivo ?? 'documento.pdf');
                     
                     $resultados[$cedula][] = (object)[
-                        'nombre_archivo' => $nombre,
-                        'url' => asset("storage/RESULTADOS/{$cedula}/{$nombre}"),
+                        'nombre_archivo' => $doc->nombre_archivo ?? 'documento.pdf',
+                        'url' => route('documento.ver', ['id' => $doc->id]),
+                        'descargar_url' => route('documento.descargar', ['id' => $doc->id]),
                         'descripcion' => $info['descripcion'],
                         'fecha' => $info['fecha'],
                         'tipo' => $info['prefijo'],
-                        'origen' => 'archivos'
+                        'fecha_creacion' => $doc->created_at ? (is_string($doc->created_at) ? $doc->created_at : $doc->created_at->format('Y-m-d H:i:s')) : '',
+                        'origen' => 'base_datos',
+                        'id' => $doc->id,
+                        'datos_db' => $doc
                     ];
                 }
             }
         }
-        
-        // ✅ BUSCAR EN LA BASE DE DATOS (NUEVO)
-      $documentosDB = DB::table('documentos_empresas')
 
-            ->where('cedula', $cedula)
-            ->get();
-        
-        if ($documentosDB->isNotEmpty()) {
-            $resultados[$cedula] = $resultados[$cedula] ?? [];
-            foreach ($documentosDB as $doc) {
-                $resultados[$cedula][] = (object)[
-                    'nombre_archivo' => $doc->nombre_archivo ?? basename($doc->ruta),
-                    'url' => $this->obtenerUrlDocumento($doc),
-                    'descripcion' => $doc->descripcion ?? 'Documento empresarial',
-                    'fecha' => $doc->created_at ? $doc->created_at->format('Y-m-d') : '',
-                    'tipo' => $doc->tipo_documento ?? 'EMP',
-                    'origen' => 'base_datos',
-                    'datos_db' => $doc
-                ];
-            }
+        if (empty($resultados)) {
+            return back()->with('mensaje', 'No se encontraron documentos para la(s) cédula(s) ingresada(s).');
         }
-    }
 
-    if (empty($resultados)) {
-        return back()->with('mensaje', 'No se encontraron certificados para la(s) cédula(s) ingresada(s).');
-    }
-
-    // ✅ DEBUG (opcional, puedes comentarlo en producción)
-    echo "<div style='background: #ff0000; color: white; padding: 20px; margin: 20px; border: 3px solid yellow;'>";
-    echo "<h2>DEBUG - CONTROLADOR CertificadoEController</h2>";
-    echo "<p>Fecha: " . date('Y-m-d H:i:s') . "</p>";
-    echo "<p>Total cédulas: " . count($resultados) . "</p>";
-    
-    foreach ($resultados as $cedula => $archivos) {
-        echo "<h3>Cédula: $cedula</h3>";
-        foreach ($archivos as $index => $archivo) {
-            echo "<div style='background: #333; padding: 10px; margin: 5px;'>";
-            echo "<p>Archivo #" . ($index+1) . ": " . $archivo->nombre_archivo . "</p>";
-            echo "<p>Origen: " . ($archivo->origen ?? 'desconocido') . "</p>";
-            echo "<p>¿Tiene descripción?: " . (isset($archivo->descripcion) ? 'SÍ' : 'NO') . "</p>";
-            if (isset($archivo->descripcion)) {
+        // ✅ DEBUG (opcional)
+        /*
+        echo "<div style='background: #ff0000; color: white; padding: 20px; margin: 20px; border: 3px solid yellow;'>";
+        echo "<h2>DEBUG - CONTROLADOR CertificadoEController</h2>";
+        echo "<p>Fecha: " . date('Y-m-d H:i:s') . "</p>";
+        echo "<p>Total cédulas: " . count($resultados) . "</p>";
+        
+        foreach ($resultados as $cedula => $archivos) {
+            echo "<h3>Cédula: $cedula</h3>";
+            foreach ($archivos as $index => $archivo) {
+                echo "<div style='background: #333; padding: 10px; margin: 5px;'>";
+                echo "<p>Archivo #" . ($index+1) . ": " . $archivo->nombre_archivo . "</p>";
+                echo "<p>ID: " . $archivo->id . "</p>";
                 echo "<p>Descripción: " . $archivo->descripcion . "</p>";
                 echo "<p>Tipo: " . $archivo->tipo . "</p>";
-                echo "<p>Fecha: " . $archivo->fecha . "</p>";
+                echo "<p>Fecha documento: " . $archivo->fecha . "</p>";
+                echo "<p>URL: " . $archivo->url . "</p>";
+                echo "</div>";
             }
-            echo "</div>";
         }
+        echo "</div>";
+        */
+
+        return view('certificados_e.resultados', compact('resultados'));
     }
-    echo "</div>";
 
-    return view('certificados_e.resultados', compact('resultados'));
-}
-
-// ✅ Método auxiliar para obtener la URL del documento
-private function obtenerUrlDocumento($documento)
-{
-    // Si ya tiene una URL completa
-    if (isset($documento->url) && filter_var($documento->url, FILTER_VALIDATE_URL)) {
-        return $documento->url;
-    }
-    
-    // Si tiene una ruta relativa
-    if (isset($documento->ruta)) {
-        // Ajusta según cómo almacenas los documentos
-        if (strpos($documento->ruta, 'storage/') === 0) {
-            return asset($documento->ruta);
-        } elseif (strpos($documento->ruta, 'public/') === 0) {
-            return asset(str_replace('public/', 'storage/', $documento->ruta));
-        } else {
-            return asset('storage/' . $documento->ruta);
-        }
-    }
-    
-    // Si no hay ruta, puedes generar una ruta a una vista o controlador
-    return route('documento.ver', ['id' => $documento->id]);
-}
-
-
-   private function interpretarCertificado($nombreArchivo)
+    // ✅ Método para visualizar documento desde BLOB
+    public function verDocumento($id)
     {
-        // Mapeo de prefijos a descripciones (del archivo que proporcionaste)
+        $documento = DB::table('documentos_empresas')
+            ->where('id', $id)
+            ->first();
+        
+        if (!$documento || !isset($documento->file_data)) {
+            abort(404, 'Documento no encontrado');
+        }
+
+        // Determinar el tipo MIME
+        $mimeType = 'application/pdf'; // Por defecto PDF
+        $nombreArchivo = $documento->nombre_archivo ?? 'documento.pdf';
+        
+        // Verificar extensión para tipo MIME
+        $extension = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+        $mimeTypes = [
+            'pdf' => 'application/pdf',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+        
+        if (isset($mimeTypes[$extension])) {
+            $mimeType = $mimeTypes[$extension];
+        }
+
+        return Response::make($documento->file_data, 200, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . $nombreArchivo . '"'
+        ]);
+    }
+
+    // ✅ Método para descargar documento desde BLOB
+    public function descargarDocumento($id)
+    {
+        $documento = DB::table('documentos_empresas')
+            ->where('id', $id)
+            ->first();
+        
+        if (!$documento || !isset($documento->file_data)) {
+            abort(404, 'Documento no encontrado');
+        }
+
+        $nombreArchivo = $documento->nombre_archivo ?? 'documento.pdf';
+        
+        return Response::make($documento->file_data, 200, [
+            'Content-Type' => 'application/octet-stream',
+            'Content-Disposition' => 'attachment; filename="' . $nombreArchivo . '"'
+        ]);
+    }
+
+    // ✅ Método para descargar múltiples documentos
+    public function descargarMultiples(Request $request)
+    {
+        $cedulas = $request->input('cedulas', []);
+        if (empty($cedulas)) {
+            return redirect()->back()->with('mensaje', 'No se recibieron cédulas para descargar.');
+        }
+
+        // Obtener todos los documentos de las cédulas
+        $documentos = DB::table('documentos_empresas')
+            ->whereIn('cedula', $cedulas)
+            ->get();
+
+        if ($documentos->isEmpty()) {
+            return redirect()->back()->with('mensaje', 'No se encontraron documentos para descargar.');
+        }
+
+        // Si solo hay un documento, descargarlo directamente
+        if ($documentos->count() === 1) {
+            $doc = $documentos->first();
+            return Response::make($doc->file_data, 200, [
+                'Content-Type' => 'application/octet-stream',
+                'Content-Disposition' => 'attachment; filename="' . ($doc->nombre_archivo ?? 'documento.pdf') . '"'
+            ]);
+        }
+
+        // Si hay múltiples documentos, crear ZIP
+        $zip = new \ZipArchive;
+        $zipFileName = 'documentos_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/public/' . $zipFileName);
+
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($documentos as $doc) {
+                $nombreArchivo = $doc->nombre_archivo ?? 'documento_' . $doc->id . '.pdf';
+                $nombreEnZip = $doc->cedula . '/' . $nombreArchivo;
+                
+                // Agregar el archivo BLOB al ZIP
+                $zip->addFromString($nombreEnZip, $doc->file_data);
+            }
+            $zip->close();
+        } else {
+            return redirect()->back()->with('mensaje', 'No se pudo crear el archivo ZIP.');
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
+    // ✅ Método para interpretar el nombre del certificado
+    private function interpretarCertificado($nombreArchivo)
+    {
+        // Mapeo de prefijos a descripciones
         $prefijos = [
             'H' => 'Historia ocupacional, ingreso, egreso, periódico',
             'HING' => 'Historia ocupacional de ingreso en el examen ingreso/egreso',
@@ -205,6 +246,14 @@ private function obtenerUrlDocumento($documento)
             'VF' => 'Valoración Fisioterapia',
             'CM' => 'Coordinación Motriz',
             'PS' => 'Psicosensometrica',
+            'CI' => 'Certificado de ingreso',
+            'TH' => 'Toxicología',
+            'ARM' => 'Documento adicional',
+            'J' => 'Documento general',
+            'TESTPSICOLOGIA' => 'Test psicológico',
+            'CILEGAL' => 'Certificado legal',
+            'CILD' => 'Certificado legal documentado',
+            'CIL' => 'Certificado legal intermedio',
         ];
         
         $nombreLimpio = pathinfo($nombreArchivo, PATHINFO_FILENAME);
@@ -212,13 +261,13 @@ private function obtenerUrlDocumento($documento)
         
         // Buscar el prefijo más largo que coincida
         $prefijoEncontrado = '';
-        $descripcion = 'Certificado';
+        $descripcion = 'Documento empresarial';
         
         foreach ($prefijos as $prefijo => $desc) {
             $prefijoMayus = strtoupper($prefijo);
             
             if (strpos($nombreMayus, $prefijoMayus) === 0) {
-                // Tomar el prefijo más largo (ej: "HING" en lugar de solo "H")
+                // Tomar el prefijo más largo
                 if (strlen($prefijo) > strlen($prefijoEncontrado)) {
                     $prefijoEncontrado = $prefijo;
                     $descripcion = $desc;
@@ -245,38 +294,5 @@ private function obtenerUrlDocumento($documento)
             'fecha' => $fecha,
             'nombre_original' => $nombreArchivo
         ];
-    }
-    
-   
-
-
-    public function descargarMultiples(Request $request)
-    {
-        $cedulas = $request->input('cedulas', []);
-        if (empty($cedulas)) {
-            return redirect()->back()->with('mensaje', 'No se recibieron cédulas para descargar.');
-        }
-
-        $zip = new ZipArchive;
-        $zipFileName = 'certificados_' . now()->format('Ymd_His') . '.zip';
-        $zipPath = storage_path('app/public/' . $zipFileName);
-
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
-            foreach ($cedulas as $cedulaRaw) {
-                $cedula = preg_replace('/[^0-9]/', '', trim($cedulaRaw));
-                $path = public_path("storage/RESULTADOS/{$cedula}");
-                if (is_dir($path)) {
-                    $archivos = glob($path . '/*.pdf');
-                    foreach ($archivos as $archivo) {
-                        $zip->addFile($archivo, "{$cedula}/" . basename($archivo));
-                    }
-                }
-            }
-            $zip->close();
-        } else {
-            return redirect()->back()->with('mensaje', 'No se pudo crear el archivo ZIP.');
-        }
-
-        return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 }
