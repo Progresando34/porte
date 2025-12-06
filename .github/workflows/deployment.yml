@@ -31,3 +31,4 @@ jobs:
             **/.env*
             **/.git*
             **/.git*/**
+            **database/migrations/**
