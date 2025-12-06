@@ -145,7 +145,7 @@ ingrese sus credenciales para continuar</h1>
                style="width:180px; max-width:100%; height:auto;">
         </div>
 
-        <h3 class="mb-3 text-center">Ingreso al Portal</h3>
+      
        
      
 
