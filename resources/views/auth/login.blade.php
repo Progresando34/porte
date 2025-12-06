@@ -146,8 +146,8 @@ ingrese sus credenciales para continuar</h1>
         </div>
 
         <h3 class="mb-3 text-center">Ingreso al Portal</h3>
-        <h3 class="mb-3 text-center">Ingreso al Portal</h3>
-        <h3 class="mb-3 text-center">Ingreso al Portal</h3>
+        <h3 class="mb-3 text-center">***************************</h3>
+        <h3 class="mb-3 text-center">*************************************</h3>
      
 
         <form method="POST" action="{{ route('login') }}">
