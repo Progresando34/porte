@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth; // ✅ Agregar esta línea
 
 class CertificadoEController extends Controller
 {
@@ -14,117 +15,142 @@ class CertificadoEController extends Controller
         return view('certificados_e.index');
     }
 
-    public function buscar(Request $request)
-    {
-        $cedulasInput = $request->input('cedulas_multiple', []);
-        $cedulaSimple = $request->input('cedula', '');
-        $resultados = [];
+ 
+public function buscar(Request $request)
+{
+    $cedulasInput = $request->input('cedulas_multiple', []);
+    $cedulaSimple = $request->input('cedula', '');
+    $resultados = [];
 
-        Log::info("=== INICIO BÚSQUEDA CERTIFICADOS ===");
-        Log::info("Cédula simple: {$cedulaSimple}");
+    Log::info("=== INICIO BÚSQUEDA CERTIFICADOS ===");
+    Log::info("Cédula simple: {$cedulaSimple}");
 
-        // Procesar una sola cédula
-        if (!empty($cedulaSimple)) {
-            $cedula = preg_replace('/[^0-9]/', '', trim($cedulaSimple));
-            
-            if (empty($cedula)) {
-                Log::warning("Cédula vacía después de limpiar");
-                return back()->with('mensaje', 'Cédula inválida');
-            }
-            
-            Log::info("Buscando cédula: {$cedula}");
-            
-            // BUSCAR EN LA BASE DE DATOS
-            try {
-                // Primero intentar con el nombre correcto de columnas
-                $documentosDB = DB::table('documentos_empresas')
-                    ->where('cedula', $cedula)
-                    ->get();
-                
-                Log::info("Documentos encontrados: " . $documentosDB->count());
-                
-                // DEBUG: Ver la estructura del primer documento
-                if ($documentosDB->count() > 0) {
-                    $firstDoc = $documentosDB->first();
-                    Log::info("Estructura del primer documento:");
-                    foreach ($firstDoc as $key => $value) {
-                        $valueType = gettype($value);
-                        $valuePreview = is_string($value) ? substr($value, 0, 50) : $valueType;
-                        Log::info("  {$key}: {$valueType} = {$valuePreview}");
-                    }
-                }
-                
-                if ($documentosDB->isNotEmpty()) {
-                    $resultados[$cedula] = [];
-                    foreach ($documentosDB as $doc) {
-                        // OBTENER EL NOMBRE DEL ARCHIVO - IMPORTANTE: usar filename
-                        // Primero intentar con filename, luego con nombre_archivo, luego valor por defecto
-                        $nombreArchivo = $doc->filename ?? 
-                                        ($doc->nombre_archivo ?? 
-                                         ($doc->file_name ?? 
-                                          ($doc->archivo ?? 
-                                           ($doc->name ?? 
-                                            'documento_' . $doc->id . '.pdf'))));
-                        
-                        Log::info("Procesando documento ID: {$doc->id}");
-                        Log::info("Nombre del archivo detectado: {$nombreArchivo}");
-                        
-                        // Interpretar el nombre del archivo
-                        $info = $this->interpretarCertificado($nombreArchivo);
-                        
-                        // Generar URLs
-                        $urlVer = route('documento.ver', ['id' => $doc->id]);
-                        $urlDescargar = route('documento.descargar', ['id' => $doc->id]);
-                        
-                        Log::info("URLs generadas - Ver: {$urlVer}, Descargar: {$urlDescargar}");
-                        
-                        // Verificar si hay datos en el BLOB
-                        $hasFileData = false;
-                        $blobField = null;
-                        
-                        // Buscar el campo que contiene el BLOB
-                        $possibleBlobFields = ['file_data', 'filedata', 'data', 'contenido', 'archivo', 'file'];
-                        foreach ($possibleBlobFields as $field) {
-                            if (isset($doc->$field) && !empty($doc->$field)) {
-                                $hasFileData = true;
-                                $blobField = $field;
-                                break;
-                            }
-                        }
-                        
-                        $resultados[$cedula][] = (object)[
-                            'nombre_archivo' => $nombreArchivo,
-                            'url' => $urlVer,
-                            'descargar_url' => $urlDescargar,
-                            'descripcion' => $info['descripcion'],
-                            'fecha' => $info['fecha'],
-                            'tipo' => $info['prefijo'],
-                            'fecha_creacion' => $doc->created_at ? 
-                                (is_string($doc->created_at) ? $doc->created_at : $doc->created_at->format('Y-m-d H:i:s')) : '',
-                            'origen' => 'base_datos',
-                            'id' => $doc->id,
-                            'tiene_file_data' => $hasFileData,
-                            'blob_field' => $blobField,
-                            'datos_completos' => $doc // Para debug
-                        ];
-                    }
-                }
-            } catch (\Exception $e) {
-                Log::error("Error al consultar base de datos: " . $e->getMessage());
-                return back()->with('mensaje', 'Error al consultar la base de datos: ' . $e->getMessage());
-            }
-        }
-
-        if (empty($resultados)) {
-            Log::warning("No se encontraron resultados");
-            return back()->with('mensaje', 'No se encontraron documentos para la cédula ingresada.');
-        }
-
-        Log::info("Total resultados: " . count($resultados));
-        Log::info("=== FIN BÚSQUEDA ===");
-
-        return view('certificados_e.resultados', compact('resultados'));
+    // Obtener usuario autenticado
+    $usuario = auth()->user();
+    
+    if (!$usuario) {
+        Log::warning("Usuario no autenticado");
+        return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
     }
+    
+    $prefijosUsuario = $usuario->obtenerPrefijosArray();
+    
+    // Si es admin, no filtrar (tiene acceso a todo)
+    $filtrarPrefijos = true;
+    if ($usuario->esAdministrador() || $usuario->profile_id == 1) {
+        $filtrarPrefijos = false;
+        Log::info("Usuario es administrador, sin restricciones de prefijos");
+    }
+    
+    Log::info("Usuario ID: {$usuario->id}, Perfil: {$usuario->profile_id}");
+    Log::info("Prefijos del usuario: " . json_encode($prefijosUsuario));
+    Log::info("¿Filtrar por prefijos?: " . ($filtrarPrefijos ? 'Sí' : 'No'));
+
+    // Procesar una sola cédula
+    if (!empty($cedulaSimple)) {
+        $cedula = preg_replace('/[^0-9]/', '', trim($cedulaSimple));
+        
+        if (empty($cedula)) {
+            Log::warning("Cédula vacía después de limpiar");
+            return back()->with('mensaje', 'Cédula inválida');
+        }
+        
+        Log::info("Buscando cédula: {$cedula}");
+        
+        try {
+            // Construir consulta base
+            $query = DB::table('documentos_empresas')
+                ->where('cedula', $cedula);
+            
+            // Si hay que filtrar por prefijos y el usuario tiene prefijos asignados
+            if ($filtrarPrefijos && !empty($prefijosUsuario)) {
+                // ✅ SOLO usar la columna 'filename' que sí existe
+                $query->where(function($q) use ($prefijosUsuario) {
+                    foreach ($prefijosUsuario as $prefijo) {
+                        $q->orWhere('filename', 'LIKE', $prefijo . '%');
+                    }
+                });
+            } elseif ($filtrarPrefijos && empty($prefijosUsuario)) {
+                // Si no es admin y no tiene prefijos, no mostrar nada
+                Log::info("Usuario no es admin y no tiene prefijos asignados. Sin resultados.");
+                return back()->with('mensaje', 'No tienes permisos para ver ningún certificado. Contacta al administrador.');
+            }
+            
+            $documentosDB = $query->get();
+            
+            Log::info("Documentos encontrados después de filtro: " . $documentosDB->count());
+            
+            if ($documentosDB->isNotEmpty()) {
+                $resultados[$cedula] = [];
+                foreach ($documentosDB as $doc) {
+                    // OBTENER EL NOMBRE DEL ARCHIVO - SOLO de filename
+                    $nombreArchivo = $doc->filename ?? 'documento_' . $doc->id . '.pdf';
+                    
+                    Log::info("Procesando documento ID: {$doc->id}");
+                    Log::info("Nombre del archivo: {$nombreArchivo}");
+                    
+                    // Interpretar el nombre del archivo
+                    $info = $this->interpretarCertificado($nombreArchivo);
+                    
+                    // Verificar si el usuario tiene acceso a este prefijo específico
+                    if ($filtrarPrefijos && !empty($info['prefijo'])) {
+                        if (!in_array($info['prefijo'], $prefijosUsuario)) {
+                            Log::info("Usuario no tiene acceso al prefijo: {$info['prefijo']}, omitiendo documento");
+                            continue;
+                        }
+                    }
+                    
+                    // Generar URLs
+                    $urlVer = route('documento.ver', ['id' => $doc->id]);
+                    $urlDescargar = route('documento.descargar', ['id' => $doc->id]);
+                    
+                    // Verificar si hay datos en el BLOB
+                    $hasFileData = false;
+                    $blobField = null;
+                    
+                    // Buscar el campo que contiene el BLOB
+                    $possibleBlobFields = ['file_data', 'filedata', 'data', 'contenido', 'archivo', 'file'];
+                    foreach ($possibleBlobFields as $field) {
+                        if (isset($doc->$field) && !empty($doc->$field)) {
+                            $hasFileData = true;
+                            $blobField = $field;
+                            break;
+                        }
+                    }
+                    
+                    $resultados[$cedula][] = (object)[
+                        'nombre_archivo' => $nombreArchivo,
+                        'url' => $urlVer,
+                        'descargar_url' => $urlDescargar,
+                        'descripcion' => $info['descripcion'],
+                        'fecha' => $info['fecha'],
+                        'tipo' => $info['prefijo'],
+                        'fecha_creacion' => $doc->created_at ? 
+                            (is_string($doc->created_at) ? $doc->created_at : $doc->created_at->format('Y-m-d H:i:s')) : '',
+                        'origen' => 'base_datos',
+                        'id' => $doc->id,
+                        'tiene_file_data' => $hasFileData,
+                        'blob_field' => $blobField,
+                        'datos_completos' => $doc
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("Error al consultar base de datos: " . $e->getMessage());
+            return back()->with('mensaje', 'Error al consultar la base de datos: ' . $e->getMessage());
+        }
+    }
+
+    if (empty($resultados)) {
+        Log::warning("No se encontraron resultados");
+        return back()->with('mensaje', 'No se encontraron documentos para la cédula ingresada o no tienes permisos para verlos.');
+    }
+
+    Log::info("Total resultados: " . count($resultados));
+    Log::info("=== FIN BÚSQUEDA ===");
+
+    return view('certificados_e.resultados', compact('resultados'));
+}
 
     // Método para visualizar documento desde BLOB
     public function verDocumento($id)

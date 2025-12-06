@@ -15,6 +15,8 @@ public function run(): void
 {
     $this->call([
         ProfileSeeder::class,
+     
+        PrefijosTableSeeder::class,
     ]);
 }
 }

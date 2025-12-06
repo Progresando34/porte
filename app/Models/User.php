@@ -5,7 +5,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable; // ✅ ESTA ES LA IMPORTANTE
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
@@ -16,8 +16,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'profile_id', // Asegúrate de agregar esto si vas a llenar este campo al registrar
-    'avatar', // 👈 solo el nombre de la columna
+        'profile_id',
+        'avatar',
     ];
 
     protected $hidden = [
@@ -33,9 +33,72 @@ class User extends Authenticatable
         ];
     }
 
-    // 🔽 Agrega esta función:
+    // 🔽 Relación con el perfil
     public function profile()
     {
         return $this->belongsTo(Profile::class);
+    }
+
+    // 🔽 NUEVO: Relación muchos a muchos con prefijos
+    public function prefijos()
+    {
+        return $this->belongsToMany(Prefijo::class, 'usuario_prefijos', 'user_id', 'prefijo_id')
+                    ->withTimestamps();
+    }
+
+    // 🔽 NUEVO: Método para verificar acceso a un prefijo específico
+    public function tieneAccesoPrefijo($prefijo)
+    {
+        // Si es admin (profile_id = 1), tiene acceso a todo
+        if ($this->profile_id == 1) { // Ajusta según tu ID de admin
+            return true;
+        }
+        
+        // Verificar si el prefijo existe en los asignados al usuario
+        return $this->prefijos()->where('prefijo', $prefijo)->exists();
+    }
+
+    // 🔽 NUEVO: Método para obtener array de prefijos
+    public function obtenerPrefijosArray()
+    {
+        return $this->prefijos()->pluck('prefijo')->toArray();
+    }
+
+    // 🔽 NUEVO: Método para obtener IDs de prefijos
+    public function obtenerPrefijosIds()
+    {
+        return $this->prefijos()->pluck('prefijos.id')->toArray();
+    }
+
+    // 🔽 NUEVO: Método para sincronizar prefijos
+    public function asignarPrefijos(array $prefijoIds)
+    {
+        return $this->prefijos()->sync($prefijoIds);
+    }
+
+    // 🔽 NUEVO: Método para agregar un prefijo
+    public function agregarPrefijo($prefijoId)
+    {
+        return $this->prefijos()->attach($prefijoId);
+    }
+
+    // 🔽 NUEVO: Método para eliminar un prefijo
+    public function eliminarPrefijo($prefijoId)
+    {
+        return $this->prefijos()->detach($prefijoId);
+    }
+
+    // 🔽 NUEVO: Scope para filtrar usuarios por prefijo
+    public function scopeConPrefijo($query, $prefijo)
+    {
+        return $query->whereHas('prefijos', function ($q) use ($prefijo) {
+            $q->where('prefijo', $prefijo);
+        });
+    }
+
+    // 🔽 NUEVO: Método para verificar si es administrador
+    public function esAdministrador()
+    {
+        return $this->profile_id == 1; // Ajusta según tu ID de admin
     }
 }

@@ -132,7 +132,8 @@
            alt="Logo" 
            style="width:600px; max-width:100%; height:auto; margin-bottom:20px;">
 
-      <p></p>
+      <h1>Bienvenido de nuevo,
+ingrese sus credenciales para continuar</h1>
     </div>
 
     <!-- Panel derecho -->
@@ -146,7 +147,7 @@
 
         <h3 class="mb-3 text-center">Ingreso al Portal</h3>
        
-        <h3>hola bienvenido *********</h3>
+     
 
         <form method="POST" action="{{ route('login') }}">
           @csrf

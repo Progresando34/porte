@@ -20,6 +20,72 @@ body {
     line-height: 1.6;
 }
 
+/* Avatar del usuario */
+.user-avatar {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(52, 152, 219, 0.1);
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+.user-avatar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    border-color: rgba(52, 152, 219, 0.2);
+}
+
+.avatar-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #3498db;
+    padding: 2px;
+}
+
+.avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #3498db, #2ecc71);
+    color: white;
+    font-weight: 600;
+    font-size: 18px;
+    border: 2px solid white;
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.2);
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-name {
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.user-role {
+    color: #7f8c8d;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -673,6 +739,42 @@ input:focus {
 }
     </style>
 </head>
+
+<div class="header">
+    <div class="logo-container">
+        <!-- Avatar del usuario si está autenticado -->
+        @auth
+        <div style="position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px;">
+            @if(auth()->user()->avatar)
+                <img src="{{ Storage::url(auth()->user()->avatar) }}" 
+                     alt="{{ auth()->user()->name }}" 
+                     class="rounded-circle" 
+                     width="50" height="50"
+                     style="border: 2px solid #3498db;">
+            @else
+                <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center" 
+                     style="width: 50px; height: 50px; background: linear-gradient(135deg, #3498db, #2ecc71);">
+                    <span class="text-white" style="font-size: 18px;">
+                        {{ substr(auth()->user()->name, 0, 1) }}
+                    </span>
+                </div>
+            @endif
+            <div style="color: #2c3e50; font-weight: 500;">
+                {{ auth()->user()->name }}
+                <div style="font-size: 12px; color: #7f8c8d;">
+                    {{ auth()->user()->profile->name ?? 'Usuario' }}
+                </div>
+            </div>
+        </div>
+        @endauth
+        
+        <!-- Logo principal -->
+        <img src="{{ asset('images/logo.png') }}" alt="Logo" class="logo">
+    </div>
+    <h1>Resultados de Certificados</h1>
+    <p class="subtitle">Consulta y gestión de documentos empresariales</p>
+</div>
+
 <body>
 
 <div class="container">
