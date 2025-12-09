@@ -6,7 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth; // ✅ Agregar esta línea
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class CertificadoEController extends Controller
 {
@@ -15,144 +16,202 @@ class CertificadoEController extends Controller
         return view('certificados_e.index');
     }
 
- 
-public function buscar(Request $request)
-{
-    $cedulasInput = $request->input('cedulas_multiple', []);
-    $cedulaSimple = $request->input('cedula', '');
-    $resultados = [];
+    public function buscar(Request $request)
+    {
+        $cedulasInput = $request->input('cedulas_multiple', []);
+        $cedulaSimple = $request->input('cedula', '');
+        $resultados = [];
 
-    Log::info("=== INICIO BÚSQUEDA CERTIFICADOS ===");
-    Log::info("Cédula simple: {$cedulaSimple}");
+        Log::info("=== INICIO BÚSQUEDA CERTIFICADOS ===");
+        Log::info("Cédula simple: {$cedulaSimple}");
 
-    // Obtener usuario autenticado
-    $usuario = auth()->user();
-    
-    if (!$usuario) {
-        Log::warning("Usuario no autenticado");
-        return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
-    }
-    
-    $prefijosUsuario = $usuario->obtenerPrefijosArray();
-    
-    // Si es admin, no filtrar (tiene acceso a todo)
-    $filtrarPrefijos = true;
-    if ($usuario->esAdministrador() || $usuario->profile_id == 1) {
-        $filtrarPrefijos = false;
-        Log::info("Usuario es administrador, sin restricciones de prefijos");
-    }
-    
-    Log::info("Usuario ID: {$usuario->id}, Perfil: {$usuario->profile_id}");
-    Log::info("Prefijos del usuario: " . json_encode($prefijosUsuario));
-    Log::info("¿Filtrar por prefijos?: " . ($filtrarPrefijos ? 'Sí' : 'No'));
-
-    // Procesar una sola cédula
-    if (!empty($cedulaSimple)) {
-        $cedula = preg_replace('/[^0-9]/', '', trim($cedulaSimple));
+        // Obtener usuario autenticado
+        $usuario = auth()->user();
         
-        if (empty($cedula)) {
-            Log::warning("Cédula vacía después de limpiar");
-            return back()->with('mensaje', 'Cédula inválida');
+        if (!$usuario) {
+            Log::warning("Usuario no autenticado");
+            return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
         }
         
-        Log::info("Buscando cédula: {$cedula}");
+        $prefijosUsuario = $usuario->obtenerPrefijosArray();
         
-        try {
-            // Construir consulta base
-            $query = DB::table('documentos_empresas')
-                ->where('cedula', $cedula);
+        // Si es admin, no filtrar (tiene acceso a todo)
+        $filtrarPrefijos = true;
+        if ($usuario->esAdministrador() || $usuario->profile_id == 1) {
+            $filtrarPrefijos = false;
+            Log::info("Usuario es administrador, sin restricciones de prefijos");
+        }
+        
+        Log::info("Usuario ID: {$usuario->id}, Perfil: {$usuario->profile_id}");
+        Log::info("Prefijos del usuario: " . json_encode($prefijosUsuario));
+        Log::info("¿Filtrar por prefijos?: " . ($filtrarPrefijos ? 'Sí' : 'No'));
+
+        // Procesar una sola cédula
+        if (!empty($cedulaSimple)) {
+            $cedula = preg_replace('/[^0-9]/', '', trim($cedulaSimple));
             
-            // Si hay que filtrar por prefijos y el usuario tiene prefijos asignados
-            if ($filtrarPrefijos && !empty($prefijosUsuario)) {
-                // ✅ SOLO usar la columna 'filename' que sí existe
-                $query->where(function($q) use ($prefijosUsuario) {
-                    foreach ($prefijosUsuario as $prefijo) {
-                        $q->orWhere('filename', 'LIKE', $prefijo . '%');
-                    }
-                });
-            } elseif ($filtrarPrefijos && empty($prefijosUsuario)) {
-                // Si no es admin y no tiene prefijos, no mostrar nada
-                Log::info("Usuario no es admin y no tiene prefijos asignados. Sin resultados.");
-                return back()->with('mensaje', 'No tienes permisos para ver ningún certificado. Contacta al administrador.');
+            if (empty($cedula)) {
+                Log::warning("Cédula vacía después de limpiar");
+                return back()->with('mensaje', 'Cédula inválida');
             }
             
-            $documentosDB = $query->get();
+            Log::info("Buscando cédula: {$cedula}");
             
-            Log::info("Documentos encontrados después de filtro: " . $documentosDB->count());
+            try {
+                // Construir consulta base
+                $query = DB::table('documentos_empresas')
+                    ->where('cedula', $cedula);
+                
+                // Si hay que filtrar por prefijos y el usuario tiene prefijos asignados
+                if ($filtrarPrefijos && !empty($prefijosUsuario)) {
+                    // ✅ SOLO usar la columna 'filename' que sí existe
+                    $query->where(function($q) use ($prefijosUsuario) {
+                        foreach ($prefijosUsuario as $prefijo) {
+                            $q->orWhere('filename', 'LIKE', $prefijo . '%');
+                        }
+                    });
+                } elseif ($filtrarPrefijos && empty($prefijosUsuario)) {
+                    // Si no es admin y no tiene prefijos, no mostrar nada
+                    Log::info("Usuario no es admin y no tiene prefijos asignados. Sin resultados.");
+                    return back()->with('mensaje', 'No tienes permisos para ver ningún certificado. Contacta al administrador.');
+                }
+                
+                $documentosDB = $query->get();
+                
+                Log::info("Documentos encontrados después de filtro: " . $documentosDB->count());
+                
+                if ($documentosDB->isNotEmpty()) {
+                    $resultados[$cedula] = [];
+                    foreach ($documentosDB as $doc) {
+                        // OBTENER EL NOMBRE DEL ARCHIVO
+                        $nombreArchivo = $doc->filename ?? 'documento_' . $doc->id . '.pdf';
+                        
+                        Log::info("Procesando documento ID: {$doc->id}");
+                        Log::info("Nombre del archivo: {$nombreArchivo}");
+                        Log::info("Ruta en BD: " . ($doc->ruta_archivo ?? 'No especificada'));
+                        
+                        // Interpretar el nombre del archivo
+                        $info = $this->interpretarCertificado($nombreArchivo);
+                        
+                        // Verificar si el usuario tiene acceso a este prefijo específico
+                        if ($filtrarPrefijos && !empty($info['prefijo'])) {
+                            if (!in_array($info['prefijo'], $prefijosUsuario)) {
+                                Log::info("Usuario no tiene acceso al prefijo: {$info['prefijo']}, omitiendo documento");
+                                continue;
+                            }
+                        }
+                        
+                        // Obtener la ruta física del archivo
+                        $rutaArchivo = $this->obtenerRutaFisica($doc);
+                        
+                        // Verificar si el archivo físico existe
+                        $archivoExiste = false;
+                        if ($rutaArchivo && file_exists($rutaArchivo)) {
+                            $archivoExiste = true;
+                            $tamañoArchivo = filesize($rutaArchivo);
+                            Log::info("Archivo físico encontrado: {$rutaArchivo}, tamaño: {$tamañoArchivo} bytes");
+                        } else {
+                            Log::warning("Archivo físico NO encontrado: " . ($rutaArchivo ?? 'Ruta no disponible'));
+                        }
+                        
+                        // Generar URLs
+                        $urlVer = route('documento.ver', ['id' => $doc->id]);
+                        $urlDescargar = route('documento.descargar', ['id' => $doc->id]);
+                        
+                        $resultados[$cedula][] = (object)[
+                            'nombre_archivo' => $nombreArchivo,
+                            'url' => $urlVer,
+                            'descargar_url' => $urlDescargar,
+                            'descripcion' => $info['descripcion'],
+                            'fecha' => $info['fecha'],
+                            'tipo' => $info['prefijo'],
+                            'fecha_creacion' => $doc->created_at ? 
+                                (is_string($doc->created_at) ? $doc->created_at : $doc->created_at->format('Y-m-d H:i:s')) : '',
+                            'origen' => 'archivo_fisico',
+                            'id' => $doc->id,
+                            'ruta_archivo' => $doc->ruta_archivo ?? null,
+                            'ruta_fisica' => $rutaArchivo,
+                            'archivo_existe' => $archivoExiste,
+                            'datos_completos' => $doc
+                        ];
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error("Error al consultar base de datos: " . $e->getMessage());
+                return back()->with('mensaje', 'Error al consultar la base de datos: ' . $e->getMessage());
+            }
+        }
+
+        if (empty($resultados)) {
+            Log::warning("No se encontraron resultados");
+            return back()->with('mensaje', 'No se encontraron documentos para la cédula ingresada o no tienes permisos para verlos.');
+        }
+
+        Log::info("Total resultados: " . count($resultados));
+        Log::info("=== FIN BÚSQUEDA ===");
+
+        return view('certificados_e.resultados', compact('resultados'));
+    }
+
+    // Método para obtener la ruta física del archivo
+    private function obtenerRutaFisica($documento)
+    {
+        // 1. Primero intentar con ruta_archivo si existe
+        if (isset($documento->ruta_archivo) && !empty($documento->ruta_archivo)) {
+            Log::info("Usando ruta_archivo: {$documento->ruta_archivo}");
             
-            if ($documentosDB->isNotEmpty()) {
-                $resultados[$cedula] = [];
-                foreach ($documentosDB as $doc) {
-                    // OBTENER EL NOMBRE DEL ARCHIVO - SOLO de filename
-                    $nombreArchivo = $doc->filename ?? 'documento_' . $doc->id . '.pdf';
-                    
-                    Log::info("Procesando documento ID: {$doc->id}");
-                    Log::info("Nombre del archivo: {$nombreArchivo}");
-                    
-                    // Interpretar el nombre del archivo
-                    $info = $this->interpretarCertificado($nombreArchivo);
-                    
-                    // Verificar si el usuario tiene acceso a este prefijo específico
-                    if ($filtrarPrefijos && !empty($info['prefijo'])) {
-                        if (!in_array($info['prefijo'], $prefijosUsuario)) {
-                            Log::info("Usuario no tiene acceso al prefijo: {$info['prefijo']}, omitiendo documento");
-                            continue;
-                        }
-                    }
-                    
-                    // Generar URLs
-                    $urlVer = route('documento.ver', ['id' => $doc->id]);
-                    $urlDescargar = route('documento.descargar', ['id' => $doc->id]);
-                    
-                    // Verificar si hay datos en el BLOB
-                    $hasFileData = false;
-                    $blobField = null;
-                    
-                    // Buscar el campo que contiene el BLOB
-                    $possibleBlobFields = ['file_data', 'filedata', 'data', 'contenido', 'archivo', 'file'];
-                    foreach ($possibleBlobFields as $field) {
-                        if (isset($doc->$field) && !empty($doc->$field)) {
-                            $hasFileData = true;
-                            $blobField = $field;
-                            break;
-                        }
-                    }
-                    
-                    $resultados[$cedula][] = (object)[
-                        'nombre_archivo' => $nombreArchivo,
-                        'url' => $urlVer,
-                        'descargar_url' => $urlDescargar,
-                        'descripcion' => $info['descripcion'],
-                        'fecha' => $info['fecha'],
-                        'tipo' => $info['prefijo'],
-                        'fecha_creacion' => $doc->created_at ? 
-                            (is_string($doc->created_at) ? $doc->created_at : $doc->created_at->format('Y-m-d H:i:s')) : '',
-                        'origen' => 'base_datos',
-                        'id' => $doc->id,
-                        'tiene_file_data' => $hasFileData,
-                        'blob_field' => $blobField,
-                        'datos_completos' => $doc
-                    ];
+            // La ruta está almacenada como: storage/RESULTADOS/[cedula]/[archivo.pdf]
+            $rutaRelativa = $documento->ruta_archivo;
+            
+            // Convertir ruta relativa a ruta absoluta
+            // storage/RESULTADOS/... -> storage/app/public/RESULTADOS/...
+            $rutaPublic = str_replace('storage/', 'public/', $rutaRelativa);
+            
+            $rutaAbsoluta = storage_path('app/' . $rutaPublic);
+            
+            // También intentar con la ruta directa desde public/storage
+            $rutaAlternativa = public_path($rutaRelativa);
+            
+            if (file_exists($rutaAbsoluta)) {
+                return $rutaAbsoluta;
+            } elseif (file_exists($rutaAlternativa)) {
+                return $rutaAlternativa;
+            }
+        }
+        
+        // 2. Si no hay ruta_archivo, construirla basada en cedula y filename
+        $cedula = $documento->cedula ?? '';
+        $filename = $documento->filename ?? '';
+        
+        if (!empty($cedula) && !empty($filename)) {
+            // Construir diferentes rutas posibles
+            $rutasPosibles = [
+                // Ruta desde storage/app/public
+                storage_path('app/public/storage/RESULTADOS/' . $cedula . '/' . $filename),
+                
+                // Ruta desde public/storage
+                public_path('storage/RESULTADOS/' . $cedula . '/' . $filename),
+                
+                // Ruta absoluta directa (ajusta según tu configuración)
+                base_path('storage/app/public/RESULTADOS/' . $cedula . '/' . $filename),
+                
+                // Ruta para XAMPP/Laragon
+                'C:\progresando\public\storage\RESULTADOS\\' . $cedula . '\\' . $filename,
+            ];
+            
+            foreach ($rutasPosibles as $ruta) {
+                if (file_exists($ruta)) {
+                    Log::info("Archivo encontrado en: {$ruta}");
+                    return $ruta;
                 }
             }
-        } catch (\Exception $e) {
-            Log::error("Error al consultar base de datos: " . $e->getMessage());
-            return back()->with('mensaje', 'Error al consultar la base de datos: ' . $e->getMessage());
         }
+        
+        Log::warning("No se pudo determinar la ruta física para documento ID: " . ($documento->id ?? 'N/A'));
+        return null;
     }
 
-    if (empty($resultados)) {
-        Log::warning("No se encontraron resultados");
-        return back()->with('mensaje', 'No se encontraron documentos para la cédula ingresada o no tienes permisos para verlos.');
-    }
-
-    Log::info("Total resultados: " . count($resultados));
-    Log::info("=== FIN BÚSQUEDA ===");
-
-    return view('certificados_e.resultados', compact('resultados'));
-}
-
-    // Método para visualizar documento desde BLOB
+    // Método para visualizar documento desde archivo físico
     public function verDocumento($id)
     {
         Log::info("=== VER DOCUMENTO ID: {$id} ===");
@@ -168,92 +227,54 @@ public function buscar(Request $request)
             }
             
             // Obtener nombre del archivo
-            $nombreArchivo = $documento->filename ?? 
-                            ($documento->nombre_archivo ?? 
-                             ($documento->file_name ?? 
-                              ($documento->archivo ?? 
-                               ($documento->name ?? 
-                                'documento_' . $id . '.pdf'))));
+            $nombreArchivo = $documento->filename ?? 'documento_' . $id . '.pdf';
             
             Log::info("Documento encontrado: ID={$id}, Nombre={$nombreArchivo}");
             
-            // Buscar el campo BLOB
-            $blobData = null;
-            $possibleBlobFields = ['file_data', 'filedata', 'data', 'contenido', 'archivo', 'file', 'blob_data', 'documento'];
+            // Obtener ruta física del archivo
+            $rutaFisica = $this->obtenerRutaFisica($documento);
             
-            foreach ($possibleBlobFields as $field) {
-                if (isset($documento->$field) && !empty($documento->$field)) {
-                    $blobData = $documento->$field;
-                    Log::info("BLOB encontrado en campo: {$field}, tamaño: " . strlen($blobData) . " bytes");
-                    break;
-                }
-            }
-            
-            if (!$blobData) {
-                Log::error("No se encontró BLOB para ID: {$id}");
+            if (!$rutaFisica || !file_exists($rutaFisica)) {
+                Log::error("Archivo físico no encontrado para ID: {$id}");
+                Log::error("Ruta buscada: " . ($rutaFisica ?? 'No disponible'));
                 
-                // Debug: mostrar todos los campos disponibles
-                Log::info("Campos disponibles en el documento:");
-                foreach ($documento as $key => $value) {
-                    $type = gettype($value);
-                    $size = is_string($value) ? strlen($value) . " bytes" : $type;
-                    Log::info("  {$key}: {$size}");
-                }
+                // Mostrar información de debug
+                echo "<h1>Error: Archivo no encontrado</h1>";
+                echo "<p>ID: {$id}</p>";
+                echo "<p>Nombre: {$nombreArchivo}</p>";
+                echo "<p>Ruta en BD: " . ($documento->ruta_archivo ?? 'No disponible') . "</p>";
+                echo "<p>Ruta buscada: " . ($rutaFisica ?? 'No disponible') . "</p>";
+                echo "<p>Cédula: " . ($documento->cedula ?? 'No disponible') . "</p>";
+                exit();
                 
-                abort(404, 'Documento no tiene contenido');
+                // abort(404, 'Archivo físico no encontrado');
             }
             
-            // Verificar si el BLOB tiene datos
-            $blobSize = strlen($blobData);
-            Log::info("Tamaño del BLOB: {$blobSize} bytes");
+            $tamañoArchivo = filesize($rutaFisica);
+            Log::info("Archivo físico: {$rutaFisica}, tamaño: {$tamañoArchivo} bytes");
             
-            if ($blobSize === 0) {
-                Log::error("BLOB vacío para ID: {$id}");
-                abort(404, 'Documento vacío');
-            }
-
             // Determinar el tipo MIME basado en la extensión
-            $mimeType = 'application/pdf';
-            $extension = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+            $mimeType = $this->obtenerMimeType($nombreArchivo);
             
-            // Si no tiene extensión, asumir PDF
-            if (empty($extension)) {
-                $nombreArchivo .= '.pdf';
-                $extension = 'pdf';
-            }
+            Log::info("Sirviendo documento: {$nombreArchivo}, tipo: {$mimeType}, tamaño: {$tamañoArchivo} bytes");
             
-            $mimeTypes = [
-                'pdf' => 'application/pdf',
-                'jpg' => 'image/jpeg',
-                'jpeg' => 'image/jpeg',
-                'png' => 'image/png',
-                'doc' => 'application/msword',
-                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'xls' => 'application/vnd.ms-excel',
-                'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            ];
-            
-            if (isset($mimeTypes[$extension])) {
-                $mimeType = $mimeTypes[$extension];
-            }
-
-            Log::info("Sirviendo documento: {$nombreArchivo}, tipo: {$mimeType}, tamaño: {$blobSize} bytes");
-            
-            return Response::make($blobData, 200, [
+            // Servir el archivo
+            return response()->file($rutaFisica, [
                 'Content-Type' => $mimeType,
                 'Content-Disposition' => 'inline; filename="' . $nombreArchivo . '"',
-                'Content-Length' => $blobSize,
+                'Content-Length' => $tamañoArchivo,
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',
                 'Pragma' => 'no-cache',
                 'Expires' => '0'
             ]);
+            
         } catch (\Exception $e) {
             Log::error("Error en verDocumento: " . $e->getMessage());
             abort(500, 'Error al cargar el documento: ' . $e->getMessage());
         }
     }
 
-    // Método para descargar documento desde BLOB
+    // Método para descargar documento desde archivo físico
     public function descargarDocumento($id)
     {
         Log::info("=== DESCARGAR DOCUMENTO ID: {$id} ===");
@@ -268,35 +289,23 @@ public function buscar(Request $request)
             }
             
             // Obtener nombre del archivo
-            $nombreArchivo = $documento->filename ?? 
-                            ($documento->nombre_archivo ?? 
-                             ($documento->file_name ?? 
-                              ($documento->archivo ?? 
-                               ($documento->name ?? 
-                                'documento_' . $id . '.pdf'))));
+            $nombreArchivo = $documento->filename ?? 'documento_' . $id . '.pdf';
             
-            // Buscar el campo BLOB
-            $blobData = null;
-            $possibleBlobFields = ['file_data', 'filedata', 'data', 'contenido', 'archivo', 'file', 'blob_data', 'documento'];
+            // Obtener ruta física del archivo
+            $rutaFisica = $this->obtenerRutaFisica($documento);
             
-            foreach ($possibleBlobFields as $field) {
-                if (isset($documento->$field) && !empty($documento->$field)) {
-                    $blobData = $documento->$field;
-                    break;
-                }
+            if (!$rutaFisica || !file_exists($rutaFisica)) {
+                Log::error("Archivo físico no encontrado para descarga ID: {$id}");
+                abort(404, 'Archivo físico no encontrado');
             }
             
-            if (!$blobData) {
-                abort(404, 'Documento no tiene contenido');
-            }
+            $tamañoArchivo = filesize($rutaFisica);
+            Log::info("Descargando: {$nombreArchivo}, tamaño: {$tamañoArchivo} bytes, ruta: {$rutaFisica}");
             
-            $blobSize = strlen($blobData);
-            Log::info("Descargando: {$nombreArchivo}, tamaño: {$blobSize} bytes");
-            
-            return Response::make($blobData, 200, [
+            // Descargar el archivo
+            return response()->download($rutaFisica, $nombreArchivo, [
                 'Content-Type' => 'application/octet-stream',
-                'Content-Disposition' => 'attachment; filename="' . $nombreArchivo . '"',
-                'Content-Length' => $blobSize,
+                'Content-Length' => $tamañoArchivo,
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',
                 'Pragma' => 'no-cache',
                 'Expires' => '0'
@@ -307,7 +316,26 @@ public function buscar(Request $request)
         }
     }
 
-    // Método para interpretar el nombre del certificado
+    // Método para obtener MIME type basado en extensión
+    private function obtenerMimeType($nombreArchivo)
+    {
+        $extension = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+        
+        $mimeTypes = [
+            'pdf' => 'application/pdf',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls' => 'application/vnd.ms-excel',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ];
+        
+        return $mimeTypes[$extension] ?? 'application/octet-stream';
+    }
+
+    // Método para interpretar el nombre del certificado (se mantiene igual)
     private function interpretarCertificado($nombreArchivo)
     {
         Log::info("Interpretando certificado: {$nombreArchivo}");
@@ -439,7 +467,7 @@ public function buscar(Request $request)
     // Método para debug
     public function debugEstructura()
     {
-        echo "<h1>DEBUG ESTRUCTURA DE TABLA</h1>";
+        echo "<h1>DEBUG ESTRUCTURA DE TABLA Y ARCHIVOS</h1>";
         
         try {
             // Verificar estructura de la tabla
@@ -475,23 +503,91 @@ public function buscar(Request $request)
                 foreach ($documentos as $doc) {
                     echo "<tr>";
                     foreach ($doc as $key => $value) {
-                        if ($key === 'filename' || $key === 'nombre_archivo' || $key === 'file_name') {
+                        if ($key === 'ruta_archivo') {
+                            echo "<td style='background-color: #e6ffe6;'><strong>" . htmlspecialchars($value ?? 'NULL') . "</strong></td>";
+                        } elseif ($key === 'filename' || $key === 'nombre_archivo') {
                             echo "<td><strong>" . htmlspecialchars($value ?? 'NULL') . "</strong></td>";
-                        } elseif (is_string($value) && strlen($value) > 100) {
-                            echo "<td>BLOB (" . strlen($value) . " bytes)</td>";
                         } else {
                             echo "<td>" . htmlspecialchars($value ?? 'NULL') . "</td>";
                         }
                     }
                     echo "</tr>";
+                    
+                    // Mostrar información del archivo físico
+                    echo "<tr><td colspan='" . count((array)$doc) . "' style='background-color: #f0f0f0;'>";
+                    $rutaFisica = $this->obtenerRutaFisica($doc);
+                    if ($rutaFisica && file_exists($rutaFisica)) {
+                        $tamaño = filesize($rutaFisica);
+                        echo "✅ Archivo físico encontrado: " . htmlspecialchars($rutaFisica) . " (" . $tamaño . " bytes)";
+                    } else {
+                        echo "❌ Archivo físico NO encontrado";
+                        if ($rutaFisica) {
+                            echo " (Ruta buscada: " . htmlspecialchars($rutaFisica) . ")";
+                        }
+                    }
+                    echo "</td></tr>";
                 }
                 echo "</table>";
             } else {
                 echo "<p>No hay registros en la tabla</p>";
             }
             
+            // Verificar estructura de directorios
+            echo "<h2>Estructura de directorios:</h2>";
+            $rutas = [
+                'public/storage/RESULTADOS' => public_path('storage/RESULTADOS'),
+                'storage/app/public/RESULTADOS' => storage_path('app/public/RESULTADOS'),
+                'C:\progresando\public\storage\RESULTADOS' => 'C:\progresando\public\storage\RESULTADOS',
+            ];
+            
+            foreach ($rutas as $nombre => $ruta) {
+                if (is_dir($ruta)) {
+                    $subcarpetas = glob($ruta . '/*', GLOB_ONLYDIR);
+                    echo "<p><strong>{$nombre}</strong>: ✅ Existe (" . count($subcarpetas) . " subcarpetas)</p>";
+                } else {
+                    echo "<p><strong>{$nombre}</strong>: ❌ No existe</p>";
+                }
+            }
+            
         } catch (\Exception $e) {
             echo "<p style='color: red;'>Error: " . $e->getMessage() . "</p>";
+        }
+    }
+    
+    // Método para probar un documento específico
+    public function probarDocumento($id)
+    {
+        try {
+            $documento = DB::table('documentos_empresas')->where('id', $id)->first();
+            
+            if (!$documento) {
+                return "Documento no encontrado";
+            }
+            
+            echo "<h1>Prueba Documento ID: {$id}</h1>";
+            echo "<pre>";
+            print_r($documento);
+            echo "</pre>";
+            
+            echo "<h2>Rutas probadas:</h2>";
+            $rutaFisica = $this->obtenerRutaFisica($documento);
+            
+            if ($rutaFisica && file_exists($rutaFisica)) {
+                echo "<p style='color: green;'>✅ Archivo encontrado: {$rutaFisica}</p>";
+                echo "<p>Tamaño: " . filesize($rutaFisica) . " bytes</p>";
+                
+                // Enlace para ver el documento
+                echo "<p><a href='" . route('documento.ver', ['id' => $id]) . "' target='_blank'>Ver documento</a></p>";
+                echo "<p><a href='" . route('documento.descargar', ['id' => $id]) . "'>Descargar documento</a></p>";
+            } else {
+                echo "<p style='color: red;'>❌ Archivo NO encontrado</p>";
+                if ($rutaFisica) {
+                    echo "<p>Ruta buscada: {$rutaFisica}</p>";
+                }
+            }
+            
+        } catch (\Exception $e) {
+            return "Error: " . $e->getMessage();
         }
     }
 }
