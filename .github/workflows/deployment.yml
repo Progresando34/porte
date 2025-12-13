@@ -42,7 +42,7 @@ jobs:
           dangerous-clean-slate: false
           log-level: verbose
           protocol: ftps
-          timeout: 120001
+          timeout: 3000000   # 50 minutos en milisegundos
           local-dir: ./
           exclude: |
             **/vendor/**
