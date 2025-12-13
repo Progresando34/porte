@@ -8,6 +8,7 @@ use App\Http\Controllers\ArmaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificadoEController;
+use App\Http\Controllers\TrabajadorController;
 
 // Página de inicio (redirecciona al login)
 Route::get('/', function () {
@@ -23,6 +24,13 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware('auth')->group(function () {
     // CRUD completo de usuarios (esto crea: /usuarios, /usuarios/create, etc.)
     Route::resource('usuarios', UserController::class);
+
+Route::resource('trabajadores', TrabajadorController::class);
+
+
+    Route::get('/admin/dashboard', function() {
+        return view('admin.dashboard');
+    })->name('admin.dashboard');
     
     // Rutas CRUD de archivos
     Route::get('/archivos', [ArchivoController::class, 'index'])->name('archivos.index');
@@ -39,16 +47,20 @@ Route::middleware('auth')->group(function () {
     Route::post('/certificados', [CertificadoController::class, 'store'])->name('certificados.store');
     
     // Rutas principales para certificados empresariales
+    // Rutas principales para certificados empresariales
     Route::prefix('certificados-empresariales')->group(function () {
         Route::get('/', [CertificadoEController::class, 'index'])->name('certificados_e.index');
         Route::post('/buscar', [CertificadoEController::class, 'buscar'])->name('certificados_e.buscar');
-        Route::get('/descargar-multiples', [CertificadoEController::class, 'descargarMultiples'])->name('certificados_e.descargarMultiples');
+        Route::POST('/descargar-multiples', [CertificadoEController::class, 'descargarMultiples'])->name('certificados_e.descargarMultiples')->middleware('auth');
+        Route::post('/generar-zip', [CertificadoEController::class, 'generarZip'])->name('certificados_e.generarZip')->middleware('auth');
     });
-    
     // Rutas para ver/descargar documentos individuales
     Route::get('/documento/{id}/ver', [CertificadoEController::class, 'verDocumento'])->name('documento.ver');
     Route::get('/documento/{id}/descargar', [CertificadoEController::class, 'descargarDocumento'])->name('documento.descargar');
 });
+
+
+
 
 // Rutas públicas (sin autenticación)
 Route::get('/ver-certificado/{filename}', [CertificadoController::class, 'ver'])->name('ver.certificado');
@@ -56,7 +68,7 @@ Route::get('/descargar-certificado/{filename}', [CertificadoController::class, '
 Route::get('/client/consultaArmas', [ArmaController::class, 'consulta'])->name('client.consultaArmas');
 Route::get('/armas/ver/{filename}', [ArmaController::class, 'ver'])->name('armas.ver.certificado');
 Route::get('/armas/descargar/{filename}', [ArmaController::class, 'descargar'])->name('armas.descargar.certificado');
-Route::get('/descargar-multiples-certificados', [ArmaController::class, 'descargarMultiples'])->name('descargar.multiples');
+Route::post('/descargar-multiples-certificados', [ArmaController::class, 'descargarMultiples'])->name('descargar.multiples');
 
 // Rutas de debug (opcionales)
 Route::get('/debug-estructura', [CertificadoEController::class, 'debugEstructura']);

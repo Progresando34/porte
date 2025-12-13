@@ -63,7 +63,7 @@
       background: #fff;
       border: 1px solid #ddd;
       display: flex;
-      align-items: center;
+      align-items:center;
       justify-content: center;
     }
 
@@ -153,18 +153,19 @@ ingrese sus credenciales para continuar</h1>
         <form method="POST" action="{{ route('login') }}">
           @csrf
           <div class="mb-3">
-            <input type="email" class="form-control" name="email" placeholder="Correo electrónico" required>
+            <input type="text" class="form-control" name="login" placeholder="Usuario o Correo electrónico" required>
+            <small class="text-muted">Puedes usar tu email o nombre de usuario</small>
           </div>
           <div class="mb-3">
             <input type="password" class="form-control" name="password" placeholder="Contraseña" required>
           </div>
           <button type="submit" class="btn btn-dark w-100">Iniciar sesión</button>
-
-  
         </form>
 
         <div class="mt-3 text-center">
-        
+          <small class="text-muted">
+            Si tienes problemas para ingresar, contacta al administrador
+          </small>
         </div>
       </div>
     </div>

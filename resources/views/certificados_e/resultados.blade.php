@@ -740,41 +740,6 @@ input:focus {
     </style>
 </head>
 
-<div class="header">
-    <div class="logo-container">
-        <!-- Avatar del usuario si está autenticado -->
-        @auth
-        <div style="position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px;">
-            @if(auth()->user()->avatar)
-                <img src="{{ Storage::url(auth()->user()->avatar) }}" 
-                     alt="{{ auth()->user()->name }}" 
-                     class="rounded-circle" 
-                     width="50" height="50"
-                     style="border: 2px solid #3498db;">
-            @else
-                <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center" 
-                     style="width: 50px; height: 50px; background: linear-gradient(135deg, #3498db, #2ecc71);">
-                    <span class="text-white" style="font-size: 18px;">
-                        {{ substr(auth()->user()->name, 0, 1) }}
-                    </span>
-                </div>
-            @endif
-            <div style="color: #2c3e50; font-weight: 500;">
-                {{ auth()->user()->name }}
-                <div style="font-size: 12px; color: #7f8c8d;">
-                    {{ auth()->user()->profile->name ?? 'Usuario' }}
-                </div>
-            </div>
-        </div>
-        @endauth
-        
-        <!-- Logo principal -->
-        <img src="{{ asset('images/logo.png') }}" alt="Logo" class="logo">
-    </div>
-    <h1>Resultados de Certificados</h1>
-    <p class="subtitle">Consulta y gestión de documentos empresariales</p>
-</div>
-
 <body>
 
 <div class="container">
@@ -812,42 +777,50 @@ input:focus {
                     <div class="cedula-number">Cédula: {{ $cedula }}</div>
                 </div>
 
-                <!-- Botón para descargar todos -->
-                <form method="GET" action="{{ route('certificados_e.descargarMultiples') }}" style="margin-bottom: 25px;">
-                    @csrf
-                    <input type="hidden" name="cedulas[]" value="{{ $cedula }}">
-                    <button type="submit" class="download-all-btn">
-                        <span></span>
-                        Descargar todos los certificados
-                    </button>
-                </form>
+                @if(count($archivos) > 0)
+                    <!-- Botón para descargar todos -->
+         <!-- Botón para descargar todos -->
+<form method="POST" action="{{ route('certificados_e.descargarMultiples') }}" style="margin-bottom: 25px;">
+    @csrf
+    <input type="hidden" name="cedula" value="{{ $cedula }}">
+    <button type="submit" class="download-all-btn">
+        <span>📥</span>
+        Descargar todos los certificados
+    </button>
+</form>
 
-                <!-- Tabla de certificados -->
-                <table class="certificates-table">
-                    <thead>
-                        <tr>
-                            <th width="55%">Descripción</th>
-                            <th width="25%">Fecha</th>
-                            <th width="20%">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($archivos as $archivo)
+                    <!-- Tabla de certificados -->
+                    <table class="certificates-table">
+                        <thead>
                             <tr>
-                                <td class="description-cell">{{ $archivo->descripcion }}</td>
-                                <td class="date-cell">{{ $archivo->fecha ?: 'Sin fecha especificada' }}</td>
-                                <td class="actions-cell">
-                                    <a href="{{ $archivo->url }}" target="_blank" class="action-btn view-btn">
-                                        <span></span> Ver
-                                    </a>
-                                    <a href="{{ $archivo->descargar_url }}" class="action-btn download-btn">
-                                        <span>⬇</span> Descargar
-                                    </a>
-                                </td>
+                                <th width="55%">Descripción</th>
+                                <th width="25%">Fecha</th>
+                                <th width="20%">Acciones</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach ($archivos as $archivo)
+                                <tr>
+                                    <td class="description-cell">{{ $archivo->descripcion }}</td>
+                                    <td class="date-cell">{{ $archivo->fecha ?: 'Sin fecha especificada' }}</td>
+                                    <td class="actions-cell">
+                                        <a href="{{ $archivo->url }}" target="_blank" class="action-btn view-btn">
+                                            <span>👁️</span> Ver
+                                        </a>
+                                        <a href="{{ $archivo->descargar_url }}" class="action-btn download-btn">
+                                            <span>⬇</span> Descargar
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <div class="no-results">
+                        <h3>No se encontraron documentos para esta cédula</h3>
+                        <p>La cédula {{ $cedula }} no tiene documentos asociados o no tienes permisos para verlos.</p>
+                    </div>
+                @endif
             </div>
         @endforeach
     @endif

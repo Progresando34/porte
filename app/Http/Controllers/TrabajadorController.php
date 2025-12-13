@@ -1,0 +1,105 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Trabajador;
+use App\Models\Prefijo;
+use Illuminate\Http\Request;
+
+class TrabajadorController extends Controller
+{
+    public function index()
+    {
+        $trabajadores = Trabajador::with('prefijos')->paginate(10);
+        return view('trabajadores.index', compact('trabajadores'));
+    }
+
+    public function create()
+    {
+        $prefijos = Prefijo::where('activo', true)->get();
+        return view('trabajadores.create', compact('prefijos'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'nombre'   => 'required|string|max:255',
+            'cedula'   => 'required|string|unique:trabajadores,cedula|max:20',
+            'usuario'  => 'required|string|unique:trabajadores,usuario|max:50',
+            'password' => 'required|string|min:6|confirmed',
+            'activo'   => 'boolean',
+            'prefijos' => 'nullable|array',
+            'prefijos.*' => 'exists:prefijos,id',
+        ]);
+
+        $trabajador = Trabajador::create([
+            'nombre'   => $request->nombre,
+            'cedula'   => $request->cedula,
+            'usuario'  => $request->usuario,
+            'password' => $request->password,
+            'activo'   => $request->has('activo'),
+        ]);
+
+        $trabajador->prefijos()->sync($request->input('prefijos', []));
+
+        return redirect()->route('trabajadores.index')
+            ->with('success', 'Trabajador creado correctamente.');
+    }
+
+    public function show($id)
+    {
+        $trabajador = Trabajador::with('prefijos')->findOrFail($id);
+        return view('trabajadores.show', compact('trabajador'));
+    }
+
+    public function edit($id)
+    {
+        $trabajador = Trabajador::withTrashed()->with('prefijos')->findOrFail($id);
+        $prefijos = Prefijo::where('activo', true)->get();
+
+        return view('trabajadores.edit', compact('trabajador', 'prefijos'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'nombre'   => 'required|string|max:255',
+            'cedula'   => 'required|string|unique:trabajadores,cedula,' . $id,
+            'usuario'  => 'required|string|unique:trabajadores,usuario,' . $id,
+            'password' => 'nullable|string|min:6|confirmed',
+            'activo'   => 'boolean',
+            'prefijos' => 'nullable|array',
+            'prefijos.*' => 'exists:prefijos,id',
+        ]);
+
+        $trabajador = Trabajador::withTrashed()->findOrFail($id);
+
+        $trabajador->update([
+            'nombre'  => $request->nombre,
+            'cedula'  => $request->cedula,
+            'usuario' => $request->usuario,
+            'activo'  => $request->has('activo'),
+        ]);
+
+        if ($request->filled('password')) {
+            $trabajador->password = $request->password;
+            $trabajador->save();
+        }
+
+        $trabajador->prefijos()->sync($request->input('prefijos', []));
+
+        return redirect()->route('trabajadores.index')
+            ->with('success', 'Trabajador actualizado correctamente.');
+    }
+
+    public function destroy($id)
+    {
+        $trabajador = Trabajador::withTrashed()->findOrFail($id);
+
+        $trabajador->prefijos()->detach(); // limpiar pivote
+        $trabajador->forceDelete();        // borrar real
+
+        return redirect()->route('trabajadores.index')
+            ->with('success', 'Trabajador eliminado definitivamente.');
+    }
+}

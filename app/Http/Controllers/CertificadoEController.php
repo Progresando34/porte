@@ -16,105 +16,179 @@ class CertificadoEController extends Controller
         return view('certificados_e.index');
     }
 
-    public function buscar(Request $request)
-    {
-        $cedulasInput = $request->input('cedulas_multiple', []);
-        $cedulaSimple = $request->input('cedula', '');
-        $resultados = [];
+public function buscar(Request $request)
+{
+    $cedulasInput = $request->input('cedulas_multiple', []);
+    $cedulaSimple = $request->input('cedula', '');
+    $resultados = [];
 
-        Log::info("=== INICIO BÚSQUEDA CERTIFICADOS ===");
-        Log::info("Cédula simple: {$cedulaSimple}");
+    Log::info("=== INICIO BÚSQUEDA CERTIFICADOS ===");
+    Log::info("Cédula simple: {$cedulaSimple}");
+    Log::info("Cédulas múltiples: " . json_encode($cedulasInput));
 
-        // Obtener usuario autenticado
-        $usuario = auth()->user();
+    // ========== PRIMERA VALIDACIÓN: ¿QUIÉN ESTÁ AUTENTICADO? ==========
+    $usuario = auth()->user();
+    $trabajadorAutenticado = false;
+    
+    // Verificar si es trabajador (sesión manual)
+    if (session('trabajador_autenticado')) {
+        $trabajadorAutenticado = true;
+        $trabajadorId = session('trabajador_id');
+        $trabajadorCedula = session('trabajador_cedula') ?? ''; // Necesitas guardar la cédula en sesión
         
-        if (!$usuario) {
-            Log::warning("Usuario no autenticado");
-            return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
-        }
+        Log::info("Usuario autenticado como TRABAJADOR, ID: {$trabajadorId}, Cédula: {$trabajadorCedula}");
         
+        // Obtener trabajador de la base de datos para sus prefijos
+        $trabajador = \App\Models\Trabajador::find($trabajadorId);
+        $prefijosUsuario = $trabajador ? $trabajador->obtenerPrefijosIds() : [];
+        $filtrarPrefijos = true; // Los trabajadores SIEMPRE tienen filtro
+        
+    } elseif ($usuario) {
+        Log::info("Usuario autenticado como USUARIO, ID: {$usuario->id}, Perfil: {$usuario->profile_id}");
+        
+        // Usuario normal
         $prefijosUsuario = $usuario->obtenerPrefijosArray();
         
-        // Si es admin, no filtrar (tiene acceso a todo)
+        // Solo administradores no tienen restricciones
         $filtrarPrefijos = true;
         if ($usuario->esAdministrador() || $usuario->profile_id == 1) {
             $filtrarPrefijos = false;
             Log::info("Usuario es administrador, sin restricciones de prefijos");
         }
-        
-        Log::info("Usuario ID: {$usuario->id}, Perfil: {$usuario->profile_id}");
-        Log::info("Prefijos del usuario: " . json_encode($prefijosUsuario));
-        Log::info("¿Filtrar por prefijos?: " . ($filtrarPrefijos ? 'Sí' : 'No'));
+    } else {
+        Log::warning("Usuario no autenticado");
+        return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
+    }
+    
+    Log::info("¿Filtrar por prefijos?: " . ($filtrarPrefijos ? 'Sí' : 'No'));
+    Log::info("Prefijos del usuario/trabajador: " . json_encode($prefijosUsuario ?? []));
 
-        // Procesar una sola cédula
-        if (!empty($cedulaSimple)) {
-            $cedula = preg_replace('/[^0-9]/', '', trim($cedulaSimple));
-            
-            if (empty($cedula)) {
-                Log::warning("Cédula vacía después de limpiar");
-                return back()->with('mensaje', 'Cédula inválida');
+    // ========== SEGUNDA VALIDACIÓN: LIMPIAR CÉDULAS ==========
+    $cedulasABuscar = [];
+    
+    // Agregar cédula simple si existe
+    if (!empty($cedulaSimple)) {
+        $cedulaLimpia = preg_replace('/[^0-9]/', '', trim($cedulaSimple));
+        if (!empty($cedulaLimpia)) {
+            $cedulasABuscar[] = $cedulaLimpia;
+        }
+    }
+    
+    // Agregar cédulas múltiples
+    if (!empty($cedulasInput) && is_array($cedulasInput)) {
+        foreach ($cedulasInput as $cedula) {
+            if (!empty($cedula)) {
+                $cedulaLimpia = preg_replace('/[^0-9]/', '', trim($cedula));
+                if (!empty($cedulaLimpia) && !in_array($cedulaLimpia, $cedulasABuscar)) {
+                    $cedulasABuscar[] = $cedulaLimpia;
+                }
             }
+        }
+    }
+    
+    // ========== TERCERA VALIDACIÓN: RESTRICCIÓN ESPECÍFICA PARA TRABAJADORES ==========
+    if ($trabajadorAutenticado && !empty($trabajadorCedula)) {
+        // Los trabajadores SOLO pueden buscar su propia cédula
+        $cedulasPermitidas = [$trabajadorCedula];
+        $cedulasABuscar = array_intersect($cedulasABuscar, $cedulasPermitidas);
+        
+        Log::info("Trabajador restringido a buscar solo su cédula: {$trabajadorCedula}");
+        Log::info("Cédulas filtradas para trabajador: " . json_encode($cedulasABuscar));
+        
+        if (empty($cedulasABuscar)) {
+            Log::warning("Trabajador intentó buscar cédulas no permitidas");
+            return back()->with('mensaje', 'Solo puedes buscar tu propia cédula: ' . $trabajadorCedula);
+        }
+    }
+    
+    Log::info("Cédulas a buscar después de validaciones: " . json_encode($cedulasABuscar));
+    
+    if (empty($cedulasABuscar)) {
+        Log::warning("No hay cédulas válidas para buscar");
+        return back()->with('mensaje', 'Ingrese al menos una cédula válida');
+    }
+    
+    // ========== CUARTA VALIDACIÓN: BUSCAR DOCUMENTOS CON FILTROS ==========
+    foreach ($cedulasABuscar as $cedula) {
+        Log::info("Buscando cédula: {$cedula}");
+        
+        try {
+            // Construir consulta base para la cédula actual
+            $query = DB::table('documentos_empresas')
+                ->where('cedula', $cedula);
             
-            Log::info("Buscando cédula: {$cedula}");
-            
-            try {
-                // Construir consulta base
-                $query = DB::table('documentos_empresas')
-                    ->where('cedula', $cedula);
+            // APLICAR FILTRO DE PREFIJOS SI ES NECESARIO
+            if ($filtrarPrefijos && !empty($prefijosUsuario)) {
+                Log::info("Aplicando filtro de prefijos para cédula: {$cedula}");
                 
-                // Si hay que filtrar por prefijos y el usuario tiene prefijos asignados
-                if ($filtrarPrefijos && !empty($prefijosUsuario)) {
-                    // ✅ SOLO usar la columna 'filename' que sí existe
-                    $query->where(function($q) use ($prefijosUsuario) {
-                        foreach ($prefijosUsuario as $prefijo) {
+                // Primero, obtener los prefijos como cadenas desde la base de datos
+                $prefijosCadenas = \App\Models\Prefijo::whereIn('id', $prefijosUsuario)
+                    ->where('activo', true)
+                    ->pluck('prefijo')
+                    ->toArray();
+                
+                Log::info("Prefijos activos del usuario: " . json_encode($prefijosCadenas));
+                
+                if (!empty($prefijosCadenas)) {
+                    $query->where(function($q) use ($prefijosCadenas) {
+                        foreach ($prefijosCadenas as $prefijo) {
                             $q->orWhere('filename', 'LIKE', $prefijo . '%');
                         }
                     });
-                } elseif ($filtrarPrefijos && empty($prefijosUsuario)) {
-                    // Si no es admin y no tiene prefijos, no mostrar nada
-                    Log::info("Usuario no es admin y no tiene prefijos asignados. Sin resultados.");
-                    return back()->with('mensaje', 'No tienes permisos para ver ningún certificado. Contacta al administrador.');
-                }
-                
-                $documentosDB = $query->get();
-                
-                Log::info("Documentos encontrados después de filtro: " . $documentosDB->count());
-                
-                if ($documentosDB->isNotEmpty()) {
+                } else {
+                    // Si no tiene prefijos activos, no mostrar nada
+                    Log::info("Usuario no tiene prefijos activos asignados. Sin resultados para cédula: {$cedula}");
                     $resultados[$cedula] = [];
-                    foreach ($documentosDB as $doc) {
-                        // OBTENER EL NOMBRE DEL ARCHIVO
-                        $nombreArchivo = $doc->filename ?? 'documento_' . $doc->id . '.pdf';
-                        
-                        Log::info("Procesando documento ID: {$doc->id}");
-                        Log::info("Nombre del archivo: {$nombreArchivo}");
-                        Log::info("Ruta en BD: " . ($doc->ruta_archivo ?? 'No especificada'));
-                        
-                        // Interpretar el nombre del archivo
-                        $info = $this->interpretarCertificado($nombreArchivo);
-                        
-                        // Verificar si el usuario tiene acceso a este prefijo específico
-                        if ($filtrarPrefijos && !empty($info['prefijo'])) {
-                            if (!in_array($info['prefijo'], $prefijosUsuario)) {
-                                Log::info("Usuario no tiene acceso al prefijo: {$info['prefijo']}, omitiendo documento");
-                                continue;
-                            }
+                    continue;
+                }
+            } elseif ($filtrarPrefijos && empty($prefijosUsuario)) {
+                // Si necesita filtrar pero no tiene prefijos, no mostrar nada
+                Log::info("Usuario necesita filtro pero no tiene prefijos asignados. Sin resultados para cédula: {$cedula}");
+                $resultados[$cedula] = [];
+                continue;
+            } else {
+                Log::info("Buscando sin filtros (admin o sin restricciones)");
+            }
+            
+            $documentosDB = $query->get();
+            
+            Log::info("Documentos encontrados en BD para cédula {$cedula}: " . $documentosDB->count());
+            
+            if ($documentosDB->isNotEmpty()) {
+                $resultados[$cedula] = [];
+                foreach ($documentosDB as $doc) {
+                    $nombreArchivo = $doc->filename ?? 'documento_' . $doc->id . '.pdf';
+                    
+                    Log::info("Procesando documento ID: {$doc->id}, Nombre: {$nombreArchivo}");
+                    
+                    // QUINTA VALIDACIÓN: VERIFICAR PREFIJO DEL ARCHIVO
+                    $info = $this->interpretarCertificado($nombreArchivo);
+                    $prefijoArchivo = $info['prefijo'];
+                    
+                    // Si tiene filtro de prefijos, verificar que el archivo tenga un prefijo permitido
+                    if ($filtrarPrefijos && !empty($prefijosCadenas) && !empty($prefijoArchivo)) {
+                        // Verificar si el prefijo del archivo está en los prefijos permitidos
+                        if (!in_array($prefijoArchivo, $prefijosCadenas)) {
+                            Log::info("Documento ID {$doc->id} tiene prefijo '{$prefijoArchivo}' que NO está permitido. Saltando.");
+                            continue; // Saltar este documento
                         }
-                        
-                        // Obtener la ruta física del archivo
-                        $rutaArchivo = $this->obtenerRutaFisica($doc);
-                        
-                        // Verificar si el archivo físico existe
-                        $archivoExiste = false;
-                        if ($rutaArchivo && file_exists($rutaArchivo)) {
-                            $archivoExiste = true;
-                            $tamañoArchivo = filesize($rutaArchivo);
-                            Log::info("Archivo físico encontrado: {$rutaArchivo}, tamaño: {$tamañoArchivo} bytes");
-                        } else {
-                            Log::warning("Archivo físico NO encontrado: " . ($rutaArchivo ?? 'Ruta no disponible'));
-                        }
-                        
-                        // Generar URLs
+                    }
+                    
+                    // Obtener la ruta física del archivo
+                    $rutaArchivo = $this->obtenerRutaFisica($doc);
+                    
+                    // Verificar si el archivo físico existe
+                    $archivoExiste = false;
+                    if ($rutaArchivo && file_exists($rutaArchivo)) {
+                        $archivoExiste = true;
+                        $tamañoArchivo = filesize($rutaArchivo);
+                        Log::info("Archivo físico encontrado: {$rutaArchivo}, tamaño: {$tamañoArchivo} bytes");
+                    } else {
+                        Log::warning("Archivo físico NO encontrado: " . ($rutaArchivo ?? 'Ruta no disponible'));
+                    }
+                    
+                    // Solo agregar si el archivo existe
+                    if ($archivoExiste) {
                         $urlVer = route('documento.ver', ['id' => $doc->id]);
                         $urlDescargar = route('documento.descargar', ['id' => $doc->id]);
                         
@@ -124,7 +198,7 @@ class CertificadoEController extends Controller
                             'descargar_url' => $urlDescargar,
                             'descripcion' => $info['descripcion'],
                             'fecha' => $info['fecha'],
-                            'tipo' => $info['prefijo'],
+                            'tipo' => $prefijoArchivo,
                             'fecha_creacion' => $doc->created_at ? 
                                 (is_string($doc->created_at) ? $doc->created_at : $doc->created_at->format('Y-m-d H:i:s')) : '',
                             'origen' => 'archivo_fisico',
@@ -134,25 +208,215 @@ class CertificadoEController extends Controller
                             'archivo_existe' => $archivoExiste,
                             'datos_completos' => $doc
                         ];
+                    } else {
+                        Log::warning("Documento ID {$doc->id} no tiene archivo físico, omitiendo");
                     }
                 }
-            } catch (\Exception $e) {
-                Log::error("Error al consultar base de datos: " . $e->getMessage());
-                return back()->with('mensaje', 'Error al consultar la base de datos: ' . $e->getMessage());
+                
+                // Si después de filtrar no hay resultados
+                if (empty($resultados[$cedula])) {
+                    Log::info("Cédula {$cedula} no tiene documentos que coincidan con los permisos del usuario");
+                    $resultados[$cedula] = [];
+                }
+            } else {
+                Log::info("No se encontraron documentos en BD para la cédula: {$cedula}");
+                $resultados[$cedula] = [];
             }
+        } catch (\Exception $e) {
+            Log::error("Error al consultar base de datos para cédula {$cedula}: " . $e->getMessage());
+            $resultados[$cedula] = ['error' => 'Error al consultar: ' . $e->getMessage()];
         }
-
-        if (empty($resultados)) {
-            Log::warning("No se encontraron resultados");
-            return back()->with('mensaje', 'No se encontraron documentos para la cédula ingresada o no tienes permisos para verlos.');
-        }
-
-        Log::info("Total resultados: " . count($resultados));
-        Log::info("=== FIN BÚSQUEDA ===");
-
-        return view('certificados_e.resultados', compact('resultados'));
     }
 
+    Log::info("Resultados finales: " . json_encode(array_keys($resultados)));
+    
+    // Verificar si hay resultados REALES
+    $hayResultadosReales = false;
+    foreach ($resultados as $cedula => $docs) {
+        if (is_array($docs) && !empty($docs)) {
+            $hayResultadosReales = true;
+            break;
+        }
+    }
+    
+    if (!$hayResultadosReales) {
+        Log::warning("No se encontraron resultados que coincidan con los permisos del usuario");
+        return back()->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas o no tienes permisos para verlos.');
+    }
+
+    Log::info("Total cédulas con resultados: " . count($resultados));
+    Log::info("=== FIN BÚSQUEDA ===");
+
+    return view('certificados_e.resultados', compact('resultados'));
+}
+
+public function descargarMultiples(Request $request)
+{
+    try {
+        Log::info("=== INICIO DESCARGA MÚLTIPLE ===");
+        Log::info("Datos recibidos: ", $request->all());
+        
+        // Obtener cédula del request
+        $cedula = $request->input('cedula', '');
+        
+        if (empty($cedula)) {
+            Log::warning("No se proporcionó cédula para descarga múltiple");
+            return back()->with('mensaje', 'No se especificó la cédula para descargar');
+        }
+        
+        // ========== VALIDACIONES DE SEGURIDAD ==========
+        $usuario = auth()->user();
+        $trabajadorAutenticado = false;
+        
+        // Verificar si es trabajador
+        if (session('trabajador_autenticado')) {
+            $trabajadorAutenticado = true;
+            $trabajadorId = session('trabajador_id');
+            $trabajadorCedula = session('trabajador_cedula') ?? '';
+            
+            // TRABAJADORES SOLO PUEDEN DESCARGAR SU PROPIA CÉDULA
+            if ($cedula !== $trabajadorCedula) {
+                Log::warning("Trabajador ID {$trabajadorId} intentó descargar cédula {$cedula} (su cédula es {$trabajadorCedula})");
+                return back()->with('mensaje', 'Solo puedes descargar documentos de tu propia cédula: ' . $trabajadorCedula);
+            }
+            
+            $trabajador = \App\Models\Trabajador::find($trabajadorId);
+            $prefijosUsuario = $trabajador ? $trabajador->obtenerPrefijosIds() : [];
+            $filtrarPrefijos = true;
+            
+        } elseif ($usuario) {
+            $prefijosUsuario = $usuario->obtenerPrefijosArray();
+            $filtrarPrefijos = true;
+            
+            if ($usuario->esAdministrador() || $usuario->profile_id == 1) {
+                $filtrarPrefijos = false;
+            }
+        } else {
+            return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
+        }
+        
+        Log::info("Descargando para cédula: {$cedula}");
+        Log::info("Usuario/trabajador autenticado, Filtrar prefijos: " . ($filtrarPrefijos ? 'Sí' : 'No'));
+        
+        // ========== BUSCAR DOCUMENTOS CON FILTROS ==========
+        $query = DB::table('documentos_empresas')
+            ->where('cedula', $cedula);
+        
+        if ($filtrarPrefijos && !empty($prefijosUsuario)) {
+            // Obtener prefijos como cadenas
+            $prefijosCadenas = \App\Models\Prefijo::whereIn('id', $prefijosUsuario)
+                ->where('activo', true)
+                ->pluck('prefijo')
+                ->toArray();
+            
+            if (!empty($prefijosCadenas)) {
+                $query->where(function($q) use ($prefijosCadenas) {
+                    foreach ($prefijosCadenas as $prefijo) {
+                        $q->orWhere('filename', 'LIKE', $prefijo . '%');
+                    }
+                });
+            } else {
+                Log::warning("Usuario/trabajador no tiene prefijos activos asignados");
+                return back()->with('mensaje', 'No tienes permisos para descargar estos documentos');
+            }
+        }
+        
+        $documentos = $query->get();
+        
+        Log::info("Documentos encontrados para descarga: " . $documentos->count());
+        
+        if ($documentos->isEmpty()) {
+            Log::warning("No hay documentos para descargar para cédula: {$cedula}");
+            return back()->with('mensaje', 'No hay documentos disponibles para descargar');
+        }
+        
+        // ========== FILTRAR MÁS POR PREFIJOS ==========
+        $documentosFiltrados = [];
+        foreach ($documentos as $documento) {
+            $nombreArchivo = $documento->filename ?? 'documento_' . $documento->id . '.pdf';
+            $info = $this->interpretarCertificado($nombreArchivo);
+            $prefijoArchivo = $info['prefijo'];
+            
+            // Si hay que filtrar por prefijos, verificar
+            if ($filtrarPrefijos && !empty($prefijosCadenas) && !empty($prefijoArchivo)) {
+                if (in_array($prefijoArchivo, $prefijosCadenas)) {
+                    $documentosFiltrados[] = $documento;
+                } else {
+                    Log::info("Documento ID {$documento->id} con prefijo '{$prefijoArchivo}' no permitido para descarga");
+                }
+            } else {
+                $documentosFiltrados[] = $documento;
+            }
+        }
+        
+        if (empty($documentosFiltrados)) {
+            Log::warning("Después del filtro de prefijos, no hay documentos para descargar");
+            return back()->with('mensaje', 'No tienes permisos para descargar estos documentos');
+        }
+        
+        // Si solo hay un documento, descargarlo directamente
+        if (count($documentosFiltrados) === 1) {
+            $documento = $documentosFiltrados[0];
+            Log::info("Solo un documento, descargando individualmente ID: {$documento->id}");
+            return $this->descargarDocumento($documento->id);
+        }
+        
+        // Para múltiples documentos, crear ZIP
+        $zipFileName = 'certificados_' . $cedula . '_' . date('Ymd_His') . '.zip';
+        $zipFilePath = storage_path('app/temp/' . $zipFileName);
+        
+        // Crear directorio temp si no existe
+        if (!file_exists(storage_path('app/temp'))) {
+            mkdir(storage_path('app/temp'), 0755, true);
+        }
+        
+        // Crear archivo ZIP
+        $zip = new \ZipArchive();
+        
+        if ($zip->open($zipFilePath, \ZipArchive::CREATE) !== TRUE) {
+            Log::error("No se pudo crear el archivo ZIP: {$zipFilePath}");
+            return back()->with('mensaje', 'Error al crear el archivo comprimido');
+        }
+        
+        $archivosAgregados = 0;
+        
+        foreach ($documentosFiltrados as $documento) {
+            $rutaFisica = $this->obtenerRutaFisica($documento);
+            
+            if ($rutaFisica && file_exists($rutaFisica)) {
+                $nombreArchivo = $documento->filename ?? 'documento_' . $documento->id . '.pdf';
+                $zip->addFile($rutaFisica, $nombreArchivo);
+                $archivosAgregados++;
+                Log::info("Agregado al ZIP: {$nombreArchivo}");
+            } else {
+                Log::warning("Archivo no encontrado para documento ID: {$documento->id}");
+            }
+        }
+        
+        $zip->close();
+        
+        if ($archivosAgregados === 0) {
+            Log::warning("No se encontraron archivos físicos para agregar al ZIP");
+            return back()->with('mensaje', 'No se encontraron archivos físicos para descargar');
+        }
+        
+        Log::info("ZIP creado exitosamente: {$zipFilePath}, archivos: {$archivosAgregados}");
+        
+        // Descargar el archivo ZIP
+        return response()->download($zipFilePath, $zipFileName, [
+            'Content-Type' => 'application/zip',
+            'Content-Disposition' => 'attachment; filename="' . $zipFileName . '"',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0'
+        ])->deleteFileAfterSend(true);
+        
+    } catch (\Exception $e) {
+        Log::error("Error en descargarMultiples: " . $e->getMessage());
+        Log::error("Trace: " . $e->getTraceAsString());
+        return back()->with('mensaje', 'Error al procesar la descarga: ' . $e->getMessage());
+    }
+}
     // Método para obtener la ruta física del archivo
     private function obtenerRutaFisica($documento)
     {

@@ -59,10 +59,10 @@ class User extends Authenticatable
     }
 
     // 🔽 NUEVO: Método para obtener array de prefijos
-    public function obtenerPrefijosArray()
-    {
-        return $this->prefijos()->pluck('prefijo')->toArray();
-    }
+public function obtenerPrefijosArray()
+{
+    return $this->prefijos()->where('activo', true)->pluck('prefijo')->toArray();
+}
 
     // 🔽 NUEVO: Método para obtener IDs de prefijos
     public function obtenerPrefijosIds()
@@ -97,8 +97,8 @@ class User extends Authenticatable
     }
 
     // 🔽 NUEVO: Método para verificar si es administrador
-    public function esAdministrador()
-    {
-        return $this->profile_id == 1; // Ajusta según tu ID de admin
-    }
+   public function esAdministrador()
+{
+    return $this->profile && $this->profile->name === 'admin';
+}
 }
