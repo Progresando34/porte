@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Hash;
 
 class Trabajador extends Authenticatable
 {
@@ -29,52 +28,41 @@ class Trabajador extends Authenticatable
 
     protected $casts = [
         'activo' => 'boolean',
+        'email_verified_at' => 'datetime',
     ];
+
+    // Para autenticación con campo personalizado
+    public function getAuthIdentifierName()
+    {
+        return 'usuario'; // O 'id' si prefieres
+    }
+
+    // Sobreescribir para usar 'usuario' en lugar de 'email'
+    public function getAuthIdentifier()
+    {
+        return $this->{$this->getAuthIdentifierName()};
+    }
 
     // Relación con prefijos
     public function prefijos()
     {
         return $this->belongsToMany(
             Prefijo::class,
-            'trabajador_prefijos', // nombre de la tabla pivot
-            'trabajador_id',       // foreign key en pivot
-            'prefijo_id'           // related key en pivot
+            'trabajador_prefijos',
+            'trabajador_id',
+            'prefijo_id'
         )->withTimestamps();
     }
 
-    // Método para obtener IDs de prefijos
     public function obtenerPrefijosIds()
     {
-        // Si ya está cargada la relación, usa cache
         if ($this->relationLoaded('prefijos')) {
             return $this->prefijos->pluck('id')->toArray();
         }
         
-        // Si no está cargada, consulta solo los IDs (más eficiente)
         return $this->prefijos()->pluck('prefijos.id')->toArray();
     }
 
-    // Mutador para hashear automáticamente la contraseña
-    public function setPasswordAttribute($value)
-    {
-        if (!empty($value)) {
-            $this->attributes['password'] = Hash::make($value);
-        }
-    }
-
-    // Método necesario para autenticación
-    public function getAuthIdentifierName()
-    {
-        return 'usuario';
-    }
-
-    // Método para verificar si el trabajador está activo
-    public function isActive()
-    {
-        return $this->activo === true;
-    }
-    
-    // Si necesitas un scope para trabajadores activos
     public function scopeActive($query)
     {
         return $query->where('activo', true);
