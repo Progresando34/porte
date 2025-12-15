@@ -9,17 +9,16 @@ class Kernel extends HttpKernel
     /**
      * The application's global HTTP middleware stack.
      *
-     * @var array<int, class-string|string>
+     * @var array
      */
     protected $middleware = [
-        // Solo middlewares esenciales de Laravel
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
     ];
 
     /**
      * The application's route middleware groups.
      *
-     * @var array<string, array<int, class-string|string>>
+     * @var array
      */
     protected $middlewareGroups = [
         'web' => [
@@ -35,6 +34,19 @@ class Kernel extends HttpKernel
     ];
 
     /**
+     * The application's route middleware.
+     *
+     * These middleware may be assigned to groups or used individually.
+     *
+     * @var array
+     */
+    protected $routeMiddleware = [
+        'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
+        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        'trabajador' => \App\Http\Middleware\AuthenticateTrabajador::class,
+    ];
+    
+    /**
      * The application's middleware aliases.
      *
      * @var array<string, class-string|string>
@@ -42,8 +54,6 @@ class Kernel extends HttpKernel
     protected $middlewareAliases = [
         'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
-        
-        // Tu middleware personalizado
-        'trabajador.auth' => \App\Http\Middleware\TrabajadorAuth::class,
+        'trabajador' => \App\Http\Middleware\AuthenticateTrabajador::class,
     ];
 }
