@@ -31,36 +31,52 @@ class Trabajador extends Authenticatable
         'activo' => 'boolean',
     ];
 
+    // Relación con prefijos
     public function prefijos()
     {
         return $this->belongsToMany(
             Prefijo::class,
-            'trabajador_prefijos',
-            'trabajador_id',
-            'prefijo_id'
+            'trabajador_prefijos', // nombre de la tabla pivot
+            'trabajador_id',       // foreign key en pivot
+            'prefijo_id'           // related key en pivot
         )->withTimestamps();
     }
 
-public function obtenerPrefijosIds()
-{
-    // Asegura que la relación esté cargada
-    if (!$this->relationLoaded('prefijos')) {
-        $this->load('prefijos');
+    // Método para obtener IDs de prefijos
+    public function obtenerPrefijosIds()
+    {
+        // Si ya está cargada la relación, usa cache
+        if ($this->relationLoaded('prefijos')) {
+            return $this->prefijos->pluck('id')->toArray();
+        }
+        
+        // Si no está cargada, consulta solo los IDs (más eficiente)
+        return $this->prefijos()->pluck('prefijos.id')->toArray();
     }
 
-    return $this->prefijos->pluck('id')->toArray();
-}
-
-
+    // Mutador para hashear automáticamente la contraseña
     public function setPasswordAttribute($value)
     {
-        if ($value) {
+        if (!empty($value)) {
             $this->attributes['password'] = Hash::make($value);
         }
     }
 
+    // Método necesario para autenticación
     public function getAuthIdentifierName()
     {
         return 'usuario';
+    }
+
+    // Método para verificar si el trabajador está activo
+    public function isActive()
+    {
+        return $this->activo === true;
+    }
+    
+    // Si necesitas un scope para trabajadores activos
+    public function scopeActive($query)
+    {
+        return $query->where('activo', true);
     }
 }

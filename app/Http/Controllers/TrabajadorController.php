@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Trabajador;
 use App\Models\Prefijo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash; // ¡IMPORTANTE!
 
 class TrabajadorController extends Controller
 {
@@ -36,7 +37,7 @@ class TrabajadorController extends Controller
             'nombre'   => $request->nombre,
             'cedula'   => $request->cedula,
             'usuario'  => $request->usuario,
-            'password' => $request->password,
+            'password' => Hash::make($request->password), // ¡AQUÍ ESTÁ EL CAMBIO!
             'activo'   => $request->has('activo'),
         ]);
 
@@ -74,17 +75,19 @@ class TrabajadorController extends Controller
 
         $trabajador = Trabajador::withTrashed()->findOrFail($id);
 
-        $trabajador->update([
+        $data = [
             'nombre'  => $request->nombre,
             'cedula'  => $request->cedula,
             'usuario' => $request->usuario,
             'activo'  => $request->has('activo'),
-        ]);
+        ];
 
+        // Solo actualizar la contraseña si se proporcionó una nueva
         if ($request->filled('password')) {
-            $trabajador->password = $request->password;
-            $trabajador->save();
+            $data['password'] = Hash::make($request->password); // ¡AQUÍ TAMBIÉN!
         }
+
+        $trabajador->update($data);
 
         $trabajador->prefijos()->sync($request->input('prefijos', []));
 
