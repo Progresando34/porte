@@ -11,11 +11,12 @@ use Illuminate\Support\Facades\Storage;
 
 class CertificadoEController extends Controller
 {
-    public function index()
-    {
-        return view('certificados_e.index');
-    }
-
+    // En ClienteCertificadoController@index:
+public function index()
+{
+    Log::info('=== Vista cliente (sin restricciones) ===');
+    return view('certificados_e.cliente');
+}
 public function buscar(Request $request)
 {
     $cedulasInput = $request->input('cedulas_multiple', []);
@@ -854,4 +855,25 @@ public function descargarMultiples(Request $request)
             return "Error: " . $e->getMessage();
         }
     }
+
+
+public function indexTrabajador()
+{
+    Log::info('=== Vista trabajador ===');
+    
+    // Verificar que sea trabajador
+    if (!session()->has('trabajador_autenticado')) {
+        Log::warning('⚠️ Usuario intentando acceder a vista de trabajador');
+        return redirect()->route('login.form')
+            ->with('error', 'Debe iniciar sesión como trabajador.');
+    }
+    
+    // Pasar información del trabajador a la vista
+    return view('certificados_e.trabajador', [
+        'nombre' => session('trabajador_nombre'),
+        'cedula' => session('trabajador_cedula'),
+        'usuario' => session('trabajador_usuario'),
+    ]);
+}
+
 }

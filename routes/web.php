@@ -10,8 +10,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificadoEController;
 use App\Http\Controllers\TrabajadorController;
 use App\Http\Middleware\AuthenticateTrabajador;
+use App\Http\Controllers\ClienteCertificadoController;
 
-// Página de inicio (redirecciona al login)
+// Página de inicio
 Route::get('/', function () {
     return view('auth.login');
 });
@@ -21,21 +22,46 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login.form
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// ========== RUTAS PARA TRABAJADORES ==========
-// SOLUCIÓN 1: Usa la clase directamente (RECOMENDADO)
-Route::middleware([AuthenticateTrabajador::class])->group(function () {
-    // Rutas principales para certificados empresariales
-    Route::prefix('certificados-empresariales')->group(function () {
-        Route::get('/', [CertificadoEController::class, 'index'])->name('certificados_e.index');
-        Route::post('/buscar', [CertificadoEController::class, 'buscar'])->name('certificados_e.buscar');
-        Route::post('/descargar-multiples', [CertificadoEController::class, 'descargarMultiples'])->name('certificados_e.descargarMultiples');
-        Route::post('/generar-zip', [CertificadoEController::class, 'generarZip'])->name('certificados_e.generarZip');
-    });
+// ========== RUTAS PARA TODOS LOS USUARIOS ==========
+// Ruta principal - según autenticación se redirige
+Route::prefix('certificados-empresariales')->group(function () {
+    // Vista para clientes (usuarios normales)
+    Route::get('/', [CertificadoEController::class, 'index'])->name('certificados_e.index');
     
-    // Rutas para ver/descargar documentos individuales
-    Route::get('/documento/{id}/ver', [CertificadoEController::class, 'verDocumento'])->name('documento.ver');
-    Route::get('/documento/{id}/descargar', [CertificadoEController::class, 'descargarDocumento'])->name('documento.descargar');
+    // Vista específica para trabajadores
+    Route::get('/trabajador', [CertificadoEController::class, 'indexTrabajador'])->name('certificados_e.trabajador');
+    
+    // Búsqueda (usa el mismo método para ambos)
+    Route::post('/buscar', [CertificadoEController::class, 'buscar'])->name('certificados_e.buscar');
+    
+    // Descarga múltiple
+    Route::post('/descargar-multiples', [CertificadoEController::class, 'descargarMultiples'])->name('certificados_e.descargarMultiples');
 });
+
+
+// ========== RUTAS PARA CLIENTES ==========
+// Usan el NUEVO controlador SIN restricciones
+Route::prefix('cliente')->group(function () {
+    Route::get('/certificados', [ClienteCertificadoController::class, 'index'])
+        ->name('cliente.certificados.index');
+    
+    Route::post('/certificados/buscar', [ClienteCertificadoController::class, 'buscar'])
+        ->name('cliente.certificados.buscar');
+});
+
+// ========== RUTAS PARA TRABAJADORES ==========
+// Usan el controlador original CON restricciones
+Route::prefix('trabajador')->group(function () {
+    Route::get('/certificados', [CertificadoEController::class, 'indexTrabajador'])
+        ->name('trabajador.certificados.index');
+    
+    Route::post('/certificados/buscar', [CertificadoEController::class, 'buscar'])
+        ->name('trabajador.certificados.buscar');
+});
+
+// ========== RUTAS PARA DOCUMENTOS ==========
+Route::get('/documento/{id}/ver', [CertificadoEController::class, 'verDocumento'])->name('documento.ver');
+Route::get('/documento/{id}/descargar', [CertificadoEController::class, 'descargarDocumento'])->name('documento.descargar');
 
 // ========== RUTAS PARA USUARIOS ADMIN ==========
 Route::middleware('auth')->group(function () {

@@ -69,24 +69,23 @@ class AuthController extends Controller
         $passwordCheck = Hash::check($password, $trabajador->password);
         Log::info('Hash::check resultado: ' . ($passwordCheck ? 'TRUE' : 'FALSE'));
         
-        if ($passwordCheck) {
-            Log::info('✅ Contraseña válida para trabajador');
-            
-            // Guardar en sesión
-            session([
-                'trabajador_id' => $trabajador->id,
-                'trabajador_nombre' => $trabajador->nombre,
-                'trabajador_cedula' => $trabajador->cedula,
-                'trabajador_usuario' => $trabajador->usuario,
-                'trabajador_autenticado' => true
-            ]);
-            
-            Log::info('✅ Sesión establecida: ' . json_encode(session()->all()));
-            Log::info('Redirigiendo a: certificados_e.index');
-            
-            return redirect()->route('certificados_e.index')
-                ->with('success', '¡Bienvenido ' . $trabajador->nombre . '!');
-        } else {
+   // En la parte de autenticación de trabajadores (después de validar password):
+// En la parte de autenticación de trabajadores:
+if ($passwordCheck) {
+    Log::info('✅ Contraseña válida para trabajador');
+    
+    session([
+        'trabajador_id' => $trabajador->id,
+        'trabajador_nombre' => $trabajador->nombre,
+        'trabajador_cedula' => $trabajador->cedula,
+        'trabajador_usuario' => $trabajador->usuario,
+        'trabajador_autenticado' => true
+    ]);
+    
+    // Redirigir a área de TRABAJADORES
+    return redirect()->route('trabajador.certificados.index')
+        ->with('success', '¡Bienvenido ' . $trabajador->nombre . '!');
+} else {
             Log::warning('❌ Hash::check FALLÓ');
             
             // Verificar si es texto plano
@@ -117,21 +116,33 @@ class AuthController extends Controller
         'login' => 'Credenciales incorrectas.',
     ])->withInput();
 }
-    private function redirectByProfile($user)
-    {
-        if (!$user->profile) {
-            return redirect()->route('certificados_e.index');
-        }
-        
-        if ($user->profile->name === 'sanidad') {
-            return redirect('/consultaArmas');
-        } elseif ($user->profile->name === 'admin') {
-            return redirect()->route('admin.dashboard');
-        } else {
-            return redirect()->route('certificados_e.index');
-        }
+    
+private function redirectByProfile($user)
+{
+    if (!$user->profile) {
+        Log::info('Usuario sin perfil, redirigiendo a página principal');
+        return redirect()->route('cliente.certificados.index');
     }
-
+    
+    Log::info('Perfil encontrado: ' . $user->profile->name);
+    
+    $profileName = strtolower(trim($user->profile->name));
+    
+    switch ($profileName) {
+        case 'sanidad':
+            return redirect('/consultaArmas');
+            
+        case 'admin':
+        case 'administrador':
+            return redirect()->route('admin.dashboard');
+            
+        case 'client':
+        case 'cliente':
+        default:
+            Log::info('✅ Redirigiendo CLIENTE a su área de consulta SIN restricciones');
+            return redirect()->route('cliente.certificados.index'); // ← CAMBIA ESTO
+    }
+}
     public function logout(Request $request)
     {
         if ($request->session()->has('trabajador_autenticado')) {

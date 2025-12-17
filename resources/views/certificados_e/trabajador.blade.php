@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Certificados</title>
+    <title>Consulta de Certificados - Trabajador</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -27,6 +27,35 @@
             margin-top: 0;
             font-size: 1.5rem;
             text-align: center;
+            color: #333;
+        }
+        
+        .user-info {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            border-left: 4px solid #28a745;
+        }
+        
+        .user-info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .user-info strong {
+            color: #155724;
+        }
+        
+        .warning-note {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border-left: 4px solid #ffc107;
         }
         
         input {
@@ -42,7 +71,7 @@
         
         button {
             padding: 12px 20px;
-            background: #007bff;
+            background: #28a745;
             color: white;
             border: none;
             border-radius: 5px;
@@ -54,7 +83,7 @@
         }
         
         button:hover {
-            background: #0056b3;
+            background: #1e7e34;
         }
         
         .mensaje {
@@ -66,12 +95,12 @@
             text-align: center;
         }
         
-        .add-btn {
-            background: #28a745;
+        .logout-btn {
+            background: #dc3545;
         }
         
-        .add-btn:hover {
-            background: #1e7e34;
+        .logout-btn:hover {
+            background: #c82333;
         }
         
         label {
@@ -100,74 +129,45 @@
                 font-size: 14px;
             }
         }
-        
-        @media (max-width: 400px) {
-            .container {
-                padding: 12px;
-            }
-            
-            h2 {
-                font-size: 1.2rem;
-            }
-            
-            input, button {
-                padding: 8px;
-                font-size: 14px;
-            }
-        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h2>Consulta de Certificados</h2>
-
-
-<!-- Agrega esta sección después del título -->
-@if(auth()->check() && auth()->user()->profile)
-    <div class="user-info" style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-        <p style="margin: 0; font-size: 14px;">
-            <strong>Usuario:</strong> {{ auth()->user()->name }} | 
-            <strong>Perfil:</strong> {{ auth()->user()->profile->name }} |
-            <strong>Email:</strong> {{ auth()->user()->email }}
-        </p>
+    <h2>Consulta de Certificados - Trabajador</h2>
+    
+    <!-- Información del trabajador -->
+    <div class="user-info">
+        <p><strong>Trabajador:</strong> {{ session('trabajador_nombre') }}</p>
+        <p><strong>Cédula:</strong> {{ session('trabajador_cedula') }}</p>
+        <p><strong>Usuario:</strong> {{ session('trabajador_usuario') }}</p>
     </div>
-@endif
-
+    
+    <!-- Advertencia -->
+    <div class="warning-note">
+        ⚠️ <strong>Nota:</strong> Solo puedes consultar tu propia cédula: 
+        <strong>{{ session('trabajador_cedula') }}</strong>
+    </div>
 
     @if (session('mensaje'))
         <div class="mensaje">{{ session('mensaje') }}</div>
     @endif
 
-<!-- POR ESTO: -->
-@if(auth()->check() && auth()->user()->profile && strtolower(auth()->user()->profile->name) === 'cliente')
-    <form method="POST" action="{{ route('cliente.certificados.buscar') }}">
-@else
+    <!-- Formulario con cédula pre-cargada -->
     <form method="POST" action="{{ route('certificados_e.buscar') }}">
-@endif
-
-
-
         @csrf
-        <label for="cedula">Ingrese su número de cédula:</label>
-        <input type="text" name="cedula" id="cedula" placeholder="Ej: 123456789" />
-
-        <div id="cedulas-multiples">
-            <label>O ingrese varias cédulas:</label>
-            <input type="text" name="cedulas_multiple[]" placeholder="Ej: 987654321" />
-        </div>
-
-        <button type="button" class="add-btn" onclick="agregarCampo()">+ Agregar otra cédula</button>
-        <br>
-        <button type="submit">Buscar</button>
+        <input type="hidden" name="cedula" value="{{ session('trabajador_cedula') }}">
+        
+        <label>Tu cédula (solo puedes consultar esta):</label>
+        <input type="text" value="{{ session('trabajador_cedula') }}" readonly disabled style="background-color: #f8f9fa;">
+        
+        <button type="submit">🔍 Consultar mis certificados</button>
+    </form>
+    
+    <!-- Botón de logout -->
+    <form method="POST" action="{{ route('logout') }}" style="margin-top: 20px;">
+        @csrf
+        <button type="submit" class="logout-btn">🚪 Cerrar sesión</button>
     </form>
 </div>
-
-<script>
-function agregarCampo() {
-    const div = document.createElement('div');
-    div.innerHTML = `<input type="text" name="cedulas_multiple[]" placeholder="Ej: 987654321" />`;
-    document.getElementById('cedulas-multiples').appendChild(div);
-}
-</script>
 </body>
 </html>
