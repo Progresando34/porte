@@ -5,7 +5,7 @@ use App\Http\Controllers\DocumentoEmpresaController;
 
 Route::prefix('documentos')->group(function () {
 
-    Route::post('/existe', [DocumentoEmpresaController::class, 'existe']);
+    Route::get('/existe/{doc}', [DocumentoEmpresaController::class, 'existe']);
 
     Route::post('/registrar', [DocumentoEmpresaController::class, 'registrar']);
 

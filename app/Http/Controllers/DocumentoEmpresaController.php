@@ -13,15 +13,18 @@ class DocumentoEmpresaController extends Controller
      * Verifica si un documento ya existe
      * Endpoint: POST /api/documentos/existe
      */
-    public function existe(Request $request): JsonResponse
+    public function existe(string $doc): JsonResponse
     {
-        $request->validate([
-            'cedula'   => 'required|string'
-        ]);
-
         try {
+            if (empty($doc)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El documento es requerido'
+                ], 422);
+            }
+
             $exists = DB::table('documentos_empresas')
-                ->where('cedula', $request->cedula)
+                ->where('cedula', $doc)
                 ->exists();
 
             return response()->json([
@@ -36,6 +39,7 @@ class DocumentoEmpresaController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Registra un nuevo documento
