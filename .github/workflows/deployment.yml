@@ -45,9 +45,9 @@ jobs:
           dangerous-clean-slate: false
           log-level: verbose
           protocol: ftps
-          port: 22
+          port: 21
           timeout: 60000
-          secure: false 
+          secure: true 
           local-dir: ./
           exclude: |
             **/vendor/**
