@@ -45,6 +45,7 @@ jobs:
           dangerous-clean-slate: false
           log-level: verbose
           protocol: ftps
+          port: 22
           timeout: 60000
           secure: false 
           local-dir: ./
