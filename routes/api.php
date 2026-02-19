@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\DocumentoEmpresaController;
+use App\Http\Controllers\api\DocumentoEmpresaController;
 
 Route::get('/health', function (Request $request) {
     return 'Health ... active';
