@@ -9,9 +9,6 @@ Route::get('/health', function (Request $request) {
 
 
 Route::prefix('documentos')->group(function () {
-
     Route::get('/existe/{doc}', [DocumentoEmpresaController::class, 'existe']);
-
     Route::post('/registrar', [DocumentoEmpresaController::class, 'registrar']);
-
 });
