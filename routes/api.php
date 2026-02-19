@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\DocumentoEmpresaController;
+use App\Http\Controllers\api\DocumentoEmpresaController;
 
 Route::prefix('documentos')->group(function () {
 
