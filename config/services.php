@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'sync_api' => [
+        'token' => env('SYNC_API_TOKEN'),
+    ],
+
 ];
