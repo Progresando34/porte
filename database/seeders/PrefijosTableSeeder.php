@@ -44,6 +44,7 @@ class PrefijosTableSeeder extends Seeder
             ['prefijo' => 'TESTPSICOLOGIA', 'descripcion' => 'Test psicológico'],
             ['prefijo' => 'CILEGAL', 'descripcion' => 'Certificado legal'],
             ['prefijo' => 'CILD', 'descripcion' => 'Certificado legal documentado'],
+            ['prefijo' => 'dx', 'descripcion' => 'RX ODONTOLOGIA'],
             ['prefijo' => 'CIL', 'descripcion' => 'Certificado legal intermedio'],
         ];
 

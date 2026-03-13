@@ -173,6 +173,7 @@ class ClienteCertificadoController extends Controller
             'CILEGAL' => 'Certificado legal',
             'CILD' => 'Certificado legal documentado',
             'CIL' => 'Certificado legal intermedio',
+            'dx' => 'RX ODONTOLOGIA'
         ];
         
         // Extraer nombre sin extensión

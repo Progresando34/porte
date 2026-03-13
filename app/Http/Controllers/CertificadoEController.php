@@ -637,6 +637,7 @@ public function descargarMultiples(Request $request)
             'CI' => 'Certificado de ingreso',
             'TH' => 'Toxicología',
             'ARM' => 'Documento adicional',
+            'dx' => 'RX ODONTOLOGIA',
             'J' => 'Documento general',
             'TESTPSICOLOGIA' => 'Test psicológico',
             'CILEGAL' => 'Certificado legal',
