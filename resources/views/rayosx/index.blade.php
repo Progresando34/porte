@@ -21,6 +21,7 @@
 
         <tbody>
             @forelse($registros as $item)
+
                 @php
                     $rutaCompleta = storage_path('app/public/' . $item->ruta);
                 @endphp
