@@ -90,6 +90,12 @@ Route::middleware('auth')->group(function () {
     // Rutas para certificados
     Route::get('/certificados/crear', [CertificadoController::class, 'create'])->name('certificados.create');
     Route::post('/certificados', [CertificadoController::class, 'store'])->name('certificados.store');
+  
+     // Rayos X
+    Route::get('/rayosx', [RayosXController::class, 'index'])->name('rayosx.index');
+    Route::get('/rayosx/create', [RayosXController::class, 'create'])->name('rayosx.create');
+    Route::post('/rayosx', [RayosXController::class, 'store'])->name('rayosx.store');
+
 });
 
 // ========== RUTAS PÚBLICAS ==========
