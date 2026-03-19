@@ -28,17 +28,18 @@ public function store(Request $request)
 
     $file = $request->file('archivo');
 
-    // 🔒 nombre ORIGINAL (NO se modifica)
+    // nombre original
     $nombreArchivo = $file->getClientOriginalName();
 
-    // ruta en FTP
-    $rutaFTP = 'RESULTADOS/' . $nombreArchivo;
+    // 📁 carpeta por cédula
+    $carpeta = 'RESULTADOS/' . $request->cedula;
 
-    // subir al FTP
-   Storage::disk('ftp')->put(
-    $rutaFTP,
-    file_get_contents($file->getRealPath())
-);
+    // 📌 guardar archivo en storage/app/public
+    $ruta = $file->storeAs(
+        $carpeta,
+        $nombreArchivo,
+        'public'
+    );
 
     // guardar en DB
     RayosX::create([
@@ -46,10 +47,10 @@ public function store(Request $request)
         'cedula' => $request->cedula,
         'fecha_rx' => $request->fecha_rx,
         'nombre_archivo' => $nombreArchivo,
-        'ruta' => $rutaFTP
+        'ruta' => $ruta // 👈 IMPORTANTE: ya no FTP
     ]);
 
-    return back()->with('success', 'Archivo subido y registrado correctamente');
+    return back()->with('success', 'Archivo guardado correctamente');
 }
 
     // 🔹 👇 ESTE ES EL NUEVO (LISTADO)
