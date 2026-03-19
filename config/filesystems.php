@@ -47,15 +47,6 @@ return [
             'report' => false,
         ],
 
-        'ftp' => [
-    'driver' => 'ftp',
-    'host' => '187.77.26.206',
-    'username' => 'user_ftp_porte',
-    'password' => 'O%u6Cs6SJT5XirT|',
-    'port' => 21,
-    'root' => '/storage/app/public/',
-    'timeout' => 60,
-],
 
         's3' => [
             'driver' => 's3',
