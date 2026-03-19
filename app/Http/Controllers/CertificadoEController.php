@@ -315,6 +315,12 @@ private function obtenerRutaFisica($documento, $origen)
     $cedula = $documento->cedula ?? '';
     $filename = '';
 
+    Log::info("=== Buscando ruta física ===", [
+        'origen' => $origen,
+        'id' => $documento->id ?? 'N/A',
+        'cedula' => $cedula
+    ]);
+
     if ($origen === 'documentos_empresas') {
         $filename = $documento->filename ?? '';
         if (isset($documento->ruta_archivo) && !empty($documento->ruta_archivo)) {
@@ -328,7 +334,6 @@ private function obtenerRutaFisica($documento, $origen)
     } elseif ($origen === 'rayosxod') {
         $filename = $documento->nombre_archivo ?? '';
         
-        // DEBUG: Registrar qué estamos buscando
         Log::info("Buscando archivo rayosxod:", [
             'id' => $documento->id,
             'cedula' => $cedula,
@@ -336,60 +341,52 @@ private function obtenerRutaFisica($documento, $origen)
             'ruta_bd' => $documento->ruta ?? 'NULL'
         ]);
         
-        if (isset($documento->ruta) && !empty($documento->ruta)) {
-            $rutaEnBD = $documento->ruta;
+        // ===== RUTA CORRECTA SEGÚN EL DEBUG =====
+        // El archivo está en: storage/app/public/RESULTADOS/1091657847/dxodo20250514.jpeg
+        
+        // Construir la ruta correcta
+        if (!empty($cedula) && !empty($filename)) {
+            // Ruta 1: storage/app/public/RESULTADOS/[cedula]/[archivo]
+            $ruta1 = storage_path('app/public/RESULTADOS/' . $cedula . '/' . $filename);
             
-            // Si la ruta es absoluta y existe
-            if (file_exists($rutaEnBD)) {
-                Log::info("✅ Archivo encontrado en ruta absoluta: {$rutaEnBD}");
-                return $rutaEnBD;
-            }
+            // Ruta 2: public/storage/RESULTADOS/[cedula]/[archivo] (symlink)
+            $ruta2 = public_path('storage/RESULTADOS/' . $cedula . '/' . $filename);
             
-            // Probar diferentes combinaciones de rutas
-            $rutasPosibles = [
-                // Ruta directa desde public/storage
-                public_path('storage/' . $rutaEnBD),
-                // Ruta desde storage/app/public
-                storage_path('app/public/' . $rutaEnBD),
-                // Ruta base
-                base_path($rutaEnBD),
-                // Si la ruta ya incluye 'storage/'
-                public_path($rutaEnBD),
-                storage_path('app/' . $rutaEnBD),
-            ];
-            
-            // También probar con la cédula como carpeta
-            if (!empty($cedula)) {
-                $rutasPosibles[] = public_path('storage/rayosxod/' . $cedula . '/' . $filename);
-                $rutasPosibles[] = storage_path('app/public/rayosxod/' . $cedula . '/' . $filename);
-                $rutasPosibles[] = public_path('storage/RESULTADOS/' . $cedula . '/' . $filename);
-                $rutasPosibles[] = storage_path('app/public/RESULTADOS/' . $cedula . '/' . $filename);
-            }
-            
-            foreach ($rutasPosibles as $ruta) {
-                if (file_exists($ruta)) {
-                    Log::info("✅ Archivo encontrado en: {$ruta}");
-                    return $ruta;
+            // Ruta 3: Si la ruta en BD es relativa a public/storage
+            if (!empty($documento->ruta)) {
+                $ruta3 = public_path('storage/' . $documento->ruta);
+                $ruta4 = storage_path('app/public/' . $documento->ruta);
+                
+                if (file_exists($ruta3)) {
+                    Log::info("✅ Archivo encontrado en ruta3: {$ruta3}");
+                    return $ruta3;
+                }
+                if (file_exists($ruta4)) {
+                    Log::info("✅ Archivo encontrado en ruta4: {$ruta4}");
+                    return $ruta4;
                 }
             }
             
-            // Si no se encontró, listar las rutas probadas para debug
-            Log::warning("❌ Archivo NO encontrado. Rutas probadas:");
-            foreach ($rutasPosibles as $ruta) {
-                Log::warning("   - {$ruta}");
+            // Verificar ruta1
+            if (file_exists($ruta1)) {
+                Log::info("✅ Archivo encontrado en ruta1: {$ruta1}");
+                return $ruta1;
             }
-        }
-    }
-
-    // ... resto del código para documentos_empresas
-    if ($origen === 'documentos_empresas' && !empty($cedula) && !empty($filename)) {
-        $rutasPosibles = [
-            storage_path('app/public/storage/RESULTADOS/' . $cedula . '/' . $filename),
-            public_path('storage/RESULTADOS/' . $cedula . '/' . $filename),
-            base_path('storage/app/public/RESULTADOS/' . $cedula . '/' . $filename),
-        ];
-        foreach ($rutasPosibles as $ruta) {
-            if (file_exists($ruta)) return $ruta;
+            
+            // Verificar ruta2
+            if (file_exists($ruta2)) {
+                Log::info("✅ Archivo encontrado en ruta2: {$ruta2}");
+                return $ruta2;
+            }
+            
+            // Si no se encontró, listar las rutas probadas
+            Log::warning("❌ Archivo NO encontrado. Rutas probadas:");
+            Log::warning("   - ruta1: {$ruta1}");
+            Log::warning("   - ruta2: {$ruta2}");
+            if (!empty($documento->ruta)) {
+                Log::warning("   - ruta3: {$ruta3}");
+                Log::warning("   - ruta4: {$ruta4}");
+            }
         }
     }
 
