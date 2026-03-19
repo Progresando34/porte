@@ -748,4 +748,139 @@ private function obtenerRutaFisica($documento, $origen)
             'usuario' => session('trabajador_usuario'),
         ]);
     }
+
+    public function debugDirecto()
+{
+    $cedula = '1091657847';
+    
+    echo "<h1>DEBUG DIRECTO - Cédula: {$cedula}</h1>";
+    
+    try {
+        // 1. Verificar conexión a BD
+        echo "<h2>1. Conexión a Base de Datos</h2>";
+        try {
+            DB::connection()->getPdo();
+            echo "✅ Conexión exitosa a: " . DB::connection()->getDatabaseName() . "<br>";
+        } catch (\Exception $e) {
+            echo "❌ Error de conexión: " . $e->getMessage() . "<br>";
+        }
+        
+        // 2. Verificar que la tabla existe
+        echo "<h2>2. Verificando tabla rayosxod</h2>";
+        $tables = DB::select('SHOW TABLES');
+        $tablaExiste = false;
+        foreach ($tables as $table) {
+            $tableName = current($table);
+            if ($tableName == 'rayosxod') {
+                $tablaExiste = true;
+                echo "✅ Tabla 'rayosxod' encontrada<br>";
+            }
+        }
+        if (!$tablaExiste) {
+            echo "❌ Tabla 'rayosxod' NO existe<br>";
+        }
+        
+        // 3. Buscar registros
+        echo "<h2>3. Buscando registros para cédula {$cedula}</h2>";
+        $registros = DB::table('rayosxod')
+            ->where('cedula', $cedula)
+            ->get();
+        
+        echo "Registros encontrados: " . $registros->count() . "<br>";
+        
+        if ($registros->count() > 0) {
+            echo "<h3>Registros:</h3>";
+            echo "<table border='1' cellpadding='5'>";
+            echo "<tr><th>ID</th><th>Nombre</th><th>Cédula</th><th>Fecha</th><th>Archivo</th><th>Ruta</th></tr>";
+            
+            foreach ($registros as $r) {
+                echo "<tr>";
+                echo "<td>{$r->id}</td>";
+                echo "<td>{$r->nombre}</td>";
+                echo "<td>{$r->cedula}</td>";
+                echo "<td>{$r->fecha_rx}</td>";
+                echo "<td>{$r->nombre_archivo}</td>";
+                echo "<td>{$r->ruta}</td>";
+                echo "</tr>";
+                
+                // 4. Verificar archivo físico
+                echo "<tr><td colspan='6' style='background:#f0f0f0;'>";
+                
+                // Probar diferentes rutas
+                $rutasProbadas = [
+                    'Ruta directa' => $r->ruta,
+                    'Public storage' => public_path('storage/' . $r->ruta),
+                    'App public' => storage_path('app/public/' . $r->ruta),
+                    'Base path' => base_path($r->ruta),
+                    'Con carpeta rayosxod' => public_path('storage/rayosxod/' . $r->cedula . '/' . $r->nombre_archivo),
+                    'Con carpeta RESULTADOS' => public_path('storage/RESULTADOS/' . $r->cedula . '/' . $r->nombre_archivo),
+                ];
+                
+                foreach ($rutasProbadas as $nombre => $ruta) {
+                    if (file_exists($ruta)) {
+                        $tamano = filesize($ruta);
+                        echo "✅ {$nombre}: Archivo encontrado en:<br> &nbsp;&nbsp; {$ruta}<br>";
+                        echo "&nbsp;&nbsp; Tamaño: " . round($tamano/1024, 2) . " KB<br>";
+                        
+                        // Mostrar imagen si es JPEG
+                        $ext = strtolower(pathinfo($r->nombre_archivo, PATHINFO_EXTENSION));
+                        if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif'])) {
+                            $url = asset('storage/' . $r->ruta);
+                            echo "&nbsp;&nbsp; <img src='{$url}' style='max-width:200px; max-height:200px; border:1px solid #ccc;'><br>";
+                        }
+                    }
+                }
+                
+                echo "</td></tr>";
+            }
+            echo "</table>";
+        } else {
+            // Mostrar algunos registros de ejemplo de la tabla
+            echo "<h3>Últimos 5 registros en rayosxod (cualquier cédula):</h3>";
+            $ultimos = DB::table('rayosxod')->limit(5)->get();
+            if ($ultimos->count() > 0) {
+                echo "<table border='1' cellpadding='5'>";
+                echo "<tr><th>ID</th><th>Nombre</th><th>Cédula</th><th>Fecha</th><th>Archivo</th><th>Ruta</th></tr>";
+                foreach ($ultimos as $u) {
+                    echo "<tr>";
+                    echo "<td>{$u->id}</td>";
+                    echo "<td>{$u->nombre}</td>";
+                    echo "<td>{$u->cedula}</td>";
+                    echo "<td>{$u->fecha_rx}</td>";
+                    echo "<td>{$u->nombre_archivo}</td>";
+                    echo "<td>{$u->ruta}</td>";
+                    echo "</tr>";
+                }
+                echo "</table>";
+            } else {
+                echo "❌ No hay ningún registro en la tabla rayosxod<br>";
+            }
+        }
+        
+        // 5. Verificar usuario actual
+        echo "<h2>4. Usuario actual</h2>";
+        if (auth()->check()) {
+            $user = auth()->user();
+            echo "✅ Usuario autenticado: {$user->name}<br>";
+            echo "Email: {$user->email}<br>";
+            echo "Profile ID: {$user->profile_id}<br>";
+            echo "Es admin: " . ($user->esAdministrador() ? 'Sí' : 'No') . "<br>";
+            
+            // Prefijos del usuario
+            $prefijos = $user->obtenerPrefijosArray();
+            echo "Prefijos del usuario (IDs): " . json_encode($prefijos) . "<br>";
+            
+            if (!empty($prefijos)) {
+                $prefijosNombres = \App\Models\Prefijo::whereIn('id', $prefijos)->pluck('prefijo')->toArray();
+                echo "Prefijos (nombres): " . json_encode($prefijosNombres) . "<br>";
+            }
+        } else {
+            echo "❌ Usuario NO autenticado<br>";
+        }
+        
+    } catch (\Exception $e) {
+        echo "<p style='color:red;'>Error: " . $e->getMessage() . "</p>";
+        echo "<pre>" . $e->getTraceAsString() . "</pre>";
+    }
+}
 }

@@ -160,6 +160,8 @@ Route::get('/debug-test', function () {
     return '✅ Esta ruta está activa';
 });
 
+Route::get('/debug-cedula', [CertificadoEController::class, 'debugDirecto']);
+
 Route::get('/ver-rx/{id}', function ($id) {
     $rx = \App\Models\RayosX::findOrFail($id);
     $path = storage_path('app/public/' . $rx->ruta);
