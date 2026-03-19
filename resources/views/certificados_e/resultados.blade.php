@@ -635,16 +635,19 @@
                                     <tr>
                                         <td class="description-cell">{{ $archivo->descripcion }}</td>
                                         <td class="date-cell">{{ $archivo->fecha ?: 'Sin fecha especificada' }}</td>
-                                        <td class="actions-cell">
-                                            <div class="action-buttons">
-                                                <a href="{{ $archivo->url }}" target="_blank" class="action-btn view-btn">
-                                                    <span>👁️</span> Ver
-                                                </a>
-                                                <a href="{{ $archivo->descargar_url }}" class="action-btn download-btn">
-                                                    <span>⬇</span> Descargar
-                                                </a>
-                                            </div>
-                                        </td>
+
+
+                              <td class="actions-cell">
+    <div class="action-buttons">
+        <a href="{{ route('documento.ver', ['id' => $archivo->id, 'origen' => $archivo->origen]) }}" target="_blank" class="action-btn view-btn">
+            <span>👁️</span> Ver
+        </a>
+        <a href="{{ route('documento.descargar', ['id' => $archivo->id, 'origen' => $archivo->origen]) }}" class="action-btn download-btn">
+            <span>⬇</span> Descargar
+        </a>
+    </div>
+</td>
+                                        
                                     </tr>
                                 @endforeach
                             </tbody>
