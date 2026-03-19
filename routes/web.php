@@ -12,6 +12,7 @@ use App\Http\Controllers\TrabajadorController;
 use App\Http\Middleware\AuthenticateTrabajador;
 use App\Http\Controllers\ClienteCertificadoController;
 use App\Http\Controllers\RayosXController;
+use Illuminate\Support\Facades\Schema;
 
 // Página de inicio
 Route::get('/', function () {
@@ -115,6 +116,14 @@ Route::get('/debug-session', function () {
         'trabajador_nombre' => session('trabajador_nombre', 'NO'),
         'cookies' => request()->cookies->all(),
     ];
+});
+
+Route::get('/test-tabla', function () {
+    if (Schema::hasTable('rayosxod')) {
+        return '✅ La tabla SI existe';
+    } else {
+        return '❌ La tabla NO existe';
+    }
 });
 
 Route::middleware('auth')->group(function () {

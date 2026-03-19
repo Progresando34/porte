@@ -35,7 +35,10 @@ public function store(Request $request)
     $rutaFTP = 'RESULTADOS/' . $nombreArchivo;
 
     // subir al FTP
-    Storage::disk('ftp')->put($rutaFTP, fopen($file, 'r+'));
+   Storage::disk('ftp')->put(
+    $rutaFTP,
+    file_get_contents($file->getRealPath())
+);
 
     // guardar en DB
     RayosX::create([
