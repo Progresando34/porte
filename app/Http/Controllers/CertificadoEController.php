@@ -15,147 +15,226 @@ class CertificadoEController extends Controller
         return view('certificados_e.cliente');
     }
 
-    public function buscar(Request $request)
-    {
-        $cedulasInput = $request->input('cedulas_multiple', []);
-        $cedulaSimple = $request->input('cedula', '');
-        $resultados = [];
+public function buscar(Request $request)
+{
+    $cedulasInput = $request->input('cedulas_multiple', []);
+    $cedulaSimple = $request->input('cedula', '');
+    $resultados = [];
 
-        Log::info("=== INICIO BÚSQUEDA CERTIFICADOS (UNIFICADA) ===");
-        Log::info("Cédula simple: {$cedulaSimple}");
-        Log::info("Cédulas múltiples: " . json_encode($cedulasInput));
+    Log::info("========== INICIO BÚSQUEDA CERTIFICADOS (DEBUG) ==========");
+    Log::info("Cédula simple: " . ($cedulaSimple ?: 'vacía'));
+    Log::info("Cédulas múltiples: " . json_encode($cedulasInput));
 
-        // ========== VALIDACIÓN DE USUARIO Y PERMISOS ==========
-        $usuario = auth()->user();
-        $trabajadorAutenticado = false;
+    // ========== VALIDACIÓN DE USUARIO Y PERMISOS ==========
+    $usuario = auth()->user();
+    $trabajadorAutenticado = false;
+    $filtrarPrefijos = true;
+    $prefijosUsuario = [];
+    $prefijosCadenas = [];
+    $trabajadorCedula = '';
+
+    Log::info("=== Validando autenticación ===");
+    
+    if (session('trabajador_autenticado')) {
+        $trabajadorAutenticado = true;
+        $trabajadorId = session('trabajador_id');
+        $trabajadorCedula = session('trabajador_cedula') ?? '';
+        Log::info("✅ Usuario autenticado como TRABAJADOR", [
+            'trabajador_id' => $trabajadorId,
+            'trabajador_cedula' => $trabajadorCedula
+        ]);
+
+        $trabajador = \App\Models\Trabajador::find($trabajadorId);
+        $prefijosUsuario = $trabajador ? $trabajador->obtenerPrefijosIds() : [];
         $filtrarPrefijos = true;
-        $prefijosUsuario = [];
-        $prefijosCadenas = [];
-        $trabajadorCedula = '';
+        Log::info("Prefijos del trabajador (IDs): " . json_encode($prefijosUsuario));
 
-        if (session('trabajador_autenticado')) {
-            $trabajadorAutenticado = true;
-            $trabajadorId = session('trabajador_id');
-            $trabajadorCedula = session('trabajador_cedula') ?? '';
-
-            Log::info("Usuario autenticado como TRABAJADOR, ID: {$trabajadorId}, Cédula: {$trabajadorCedula}");
-
-            $trabajador = \App\Models\Trabajador::find($trabajadorId);
-            $prefijosUsuario = $trabajador ? $trabajador->obtenerPrefijosIds() : [];
-            $filtrarPrefijos = true;
-
-        } elseif ($usuario) {
-            Log::info("Usuario autenticado como USUARIO, ID: {$usuario->id}, Perfil: {$usuario->profile_id}");
-            $prefijosUsuario = $usuario->obtenerPrefijosArray();
-            $filtrarPrefijos = true;
-            if ($usuario->esAdministrador() || $usuario->profile_id == 1) {
-                $filtrarPrefijos = false;
-                Log::info("Usuario es administrador, sin restricciones de prefijos");
-            }
+    } elseif ($usuario) {
+        Log::info("✅ Usuario autenticado como USUARIO", [
+            'user_id' => $usuario->id,
+            'profile_id' => $usuario->profile_id,
+            'es_admin' => $usuario->esAdministrador() ? 'sí' : 'no'
+        ]);
+        
+        $prefijosUsuario = $usuario->obtenerPrefijosArray();
+        $filtrarPrefijos = true;
+        
+        if ($usuario->esAdministrador() || $usuario->profile_id == 1) {
+            $filtrarPrefijos = false;
+            Log::info("👑 Usuario es administrador - SIN FILTROS DE PREFIJOS");
         } else {
-            Log::warning("Usuario no autenticado");
-            return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
+            Log::info("Prefijos del usuario (IDs): " . json_encode($prefijosUsuario));
         }
-
-        // Obtener los strings de los prefijos si es necesario filtrar
-        if ($filtrarPrefijos && !empty($prefijosUsuario)) {
-            $prefijosCadenas = \App\Models\Prefijo::whereIn('id', $prefijosUsuario)
-                ->where('activo', true)
-                ->pluck('prefijo')
-                ->toArray();
-            Log::info("Prefijos activos del usuario: " . json_encode($prefijosCadenas));
-        }
-
-        // ========== LIMPIAR CÉDULAS ==========
-        $cedulasABuscar = [];
-        if (!empty($cedulaSimple)) {
-            $cedulaLimpia = preg_replace('/[^0-9]/', '', trim($cedulaSimple));
-            if (!empty($cedulaLimpia)) $cedulasABuscar[] = $cedulaLimpia;
-        }
-        if (!empty($cedulasInput) && is_array($cedulasInput)) {
-            foreach ($cedulasInput as $cedula) {
-                if (!empty($cedula)) {
-                    $cedulaLimpia = preg_replace('/[^0-9]/', '', trim($cedula));
-                    if (!empty($cedulaLimpia) && !in_array($cedulaLimpia, $cedulasABuscar)) {
-                        $cedulasABuscar[] = $cedulaLimpia;
-                    }
-                }
-            }
-        }
-
-        // ========== RESTRICCIÓN PARA TRABAJADORES ==========
-        if ($trabajadorAutenticado && !empty($trabajadorCedula)) {
-            $cedulasPermitidas = [$trabajadorCedula];
-            $cedulasABuscar = array_intersect($cedulasABuscar, $cedulasPermitidas);
-            Log::info("Trabajador restringido a buscar solo su cédula: {$trabajadorCedula}");
-            if (empty($cedulasABuscar)) {
-                return back()->with('mensaje', 'Solo puedes buscar tu propia cédula: ' . $trabajadorCedula);
-            }
-        }
-
-        Log::info("Cédulas a buscar después de validaciones: " . json_encode($cedulasABuscar));
-        if (empty($cedulasABuscar)) {
-            return back()->with('mensaje', 'Ingrese al menos una cédula válida');
-        }
-
-        // ========== BÚSQUEDA EN AMBAS TABLAS ==========
-        foreach ($cedulasABuscar as $cedula) {
-            Log::info("===== Procesando cédula: {$cedula} =====");
-            $documentosCombinados = [];
-
-            // 1. Buscar en documentos_empresas
-            try {
-                $queryEmpresas = DB::table('documentos_empresas')->where('cedula', $cedula);
-                $documentosEmpresas = $this->aplicarFiltroPrefijos($queryEmpresas, 'filename', $filtrarPrefijos, $prefijosCadenas)->get();
-                Log::info("Encontrados " . $documentosEmpresas->count() . " docs en documentos_empresas");
-
-                foreach ($documentosEmpresas as $doc) {
-                    $procesado = $this->procesarDocumento($doc, 'documentos_empresas', $filtrarPrefijos, $prefijosCadenas);
-                    if ($procesado) {
-                        $documentosCombinados[] = $procesado;
-                    }
-                }
-            } catch (\Exception $e) {
-                Log::error("Error en documentos_empresas para cédula {$cedula}: " . $e->getMessage());
-            }
-
-            // 2. Buscar en rayosxod
-            try {
-                $queryRayos = DB::table('rayosxod')->where('cedula', $cedula);
-                $documentosRayos = $this->aplicarFiltroPrefijos($queryRayos, 'nombre_archivo', $filtrarPrefijos, $prefijosCadenas)->get();
-                Log::info("Encontrados " . $documentosRayos->count() . " docs en rayosxod");
-
-                foreach ($documentosRayos as $doc) {
-                    $procesado = $this->procesarDocumento($doc, 'rayosxod', $filtrarPrefijos, $prefijosCadenas);
-                    if ($procesado) {
-                        $documentosCombinados[] = $procesado;
-                    }
-                }
-            } catch (\Exception $e) {
-                Log::error("Error en rayosxod para cédula {$cedula}: " . $e->getMessage());
-            }
-
-            $resultados[$cedula] = $documentosCombinados;
-        }
-
-        // ========== VERIFICAR RESULTADOS FINALES ==========
-        $hayResultadosReales = false;
-        foreach ($resultados as $cedula => $docs) {
-            if (!empty($docs)) {
-                $hayResultadosReales = true;
-                break;
-            }
-        }
-
-        if (!$hayResultadosReales) {
-            Log::warning("No se encontraron resultados en ninguna tabla.");
-            return back()->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas o no tienes permisos para verlos.');
-        }
-
-        Log::info("=== FIN BÚSQUEDA UNIFICADA ===");
-        return view('certificados_e.resultados', compact('resultados'));
+    } else {
+        Log::error("❌ Usuario NO autenticado");
+        return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
     }
 
+    // Obtener los strings de los prefijos si es necesario filtrar
+    if ($filtrarPrefijos && !empty($prefijosUsuario)) {
+        $prefijosCadenas = \App\Models\Prefijo::whereIn('id', $prefijosUsuario)
+            ->where('activo', true)
+            ->pluck('prefijo')
+            ->toArray();
+        Log::info("🔍 Prefijos ACTIVOS (strings): " . json_encode($prefijosCadenas));
+    } else {
+        Log::info("ℹ️ No se aplicarán filtros de prefijos o usuario sin prefijos");
+    }
+
+    Log::info("¿Filtrar por prefijos?: " . ($filtrarPrefijos ? 'SÍ' : 'NO'));
+
+    // ========== LIMPIAR CÉDULAS ==========
+    $cedulasABuscar = [];
+    if (!empty($cedulaSimple)) {
+        $cedulaLimpia = preg_replace('/[^0-9]/', '', trim($cedulaSimple));
+        if (!empty($cedulaLimpia)) {
+            $cedulasABuscar[] = $cedulaLimpia;
+            Log::info("Cédula simple limpia: {$cedulaLimpia}");
+        }
+    }
+    if (!empty($cedulasInput) && is_array($cedulasInput)) {
+        foreach ($cedulasInput as $cedula) {
+            if (!empty($cedula)) {
+                $cedulaLimpia = preg_replace('/[^0-9]/', '', trim($cedula));
+                if (!empty($cedulaLimpia) && !in_array($cedulaLimpia, $cedulasABuscar)) {
+                    $cedulasABuscar[] = $cedulaLimpia;
+                    Log::info("Cédula múltiple limpia: {$cedulaLimpia}");
+                }
+            }
+        }
+    }
+
+    // ========== RESTRICCIÓN PARA TRABAJADORES ==========
+    if ($trabajadorAutenticado && !empty($trabajadorCedula)) {
+        $cedulasPermitidas = [$trabajadorCedula];
+        $cedulasABuscar = array_intersect($cedulasABuscar, $cedulasPermitidas);
+        Log::info("🔒 Trabajador restringido - Cédulas permitidas: " . json_encode($cedulasPermitidas));
+        Log::info("Cédulas después de filtro: " . json_encode($cedulasABuscar));
+        
+        if (empty($cedulasABuscar)) {
+            Log::warning("⚠️ Trabajador intentó buscar cédulas no permitidas");
+            return back()->with('mensaje', 'Solo puedes buscar tu propia cédula: ' . $trabajadorCedula);
+        }
+    }
+
+    Log::info("✅ Cédulas a buscar FINALES: " . json_encode($cedulasABuscar));
+    
+    if (empty($cedulasABuscar)) {
+        Log::warning("⚠️ No hay cédulas válidas para buscar");
+        return back()->with('mensaje', 'Ingrese al menos una cédula válida');
+    }
+
+    // ========== BÚSQUEDA EN AMBAS TABLAS ==========
+    foreach ($cedulasABuscar as $cedula) {
+        Log::info("========== PROCESANDO CÉDULA: {$cedula} ==========");
+        $documentosCombinados = [];
+
+        // 1. Buscar en documentos_empresas
+        try {
+            Log::info("🔍 Buscando en documentos_empresas para cédula: {$cedula}");
+            $queryEmpresas = DB::table('documentos_empresas')->where('cedula', $cedula);
+            
+            // Verificar cuántos registros hay SIN filtros
+            $totalSinFiltro = $queryEmpresas->count();
+            Log::info("📊 documentos_empresas - Total sin filtros: {$totalSinFiltro}");
+            
+            // Aplicar filtros
+            $queryConFiltro = $this->aplicarFiltroPrefijos(clone $queryEmpresas, 'filename', $filtrarPrefijos, $prefijosCadenas);
+            $documentosEmpresas = $queryConFiltro->get();
+            
+            Log::info("📄 documentos_empresas - Encontrados con filtros: " . $documentosEmpresas->count());
+            
+            foreach ($documentosEmpresas as $index => $doc) {
+                Log::info("Procesando doc empresas #{$index}", [
+                    'id' => $doc->id,
+                    'filename' => $doc->filename ?? 'NULL',
+                    'ruta_archivo' => $doc->ruta_archivo ?? 'NULL'
+                ]);
+                
+                $procesado = $this->procesarDocumento($doc, 'documentos_empresas', $filtrarPrefijos, $prefijosCadenas);
+                if ($procesado) {
+                    $documentosCombinados[] = $procesado;
+                    Log::info("✅ Documento AGREGADO: {$procesado->nombre_archivo}");
+                } else {
+                    Log::warning("❌ Documento RECHAZADO ID: {$doc->id}");
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("💥 Error en documentos_empresas: " . $e->getMessage());
+        }
+
+        // 2. Buscar en rayosxod
+        try {
+            Log::info("🔍 Buscando en rayosxod para cédula: {$cedula}");
+            $queryRayos = DB::table('rayosxod')->where('cedula', $cedula);
+            
+            // Verificar cuántos registros hay SIN filtros
+            $totalSinFiltro = $queryRayos->count();
+            Log::info("📊 rayosxod - Total sin filtros: {$totalSinFiltro}");
+            
+            // Mostrar todos los registros sin filtrar para depuración
+            $todosLosRayos = $queryRayos->get();
+            foreach ($todosLosRayos as $rx) {
+                Log::info("📄 REGISTRO EN rayosxod (sin filtrar)", [
+                    'id' => $rx->id,
+                    'nombre' => $rx->nombre,
+                    'cedula' => $rx->cedula,
+                    'fecha_rx' => $rx->fecha_rx,
+                    'nombre_archivo' => $rx->nombre_archivo,
+                    'ruta' => $rx->ruta
+                ]);
+            }
+            
+            // Aplicar filtros
+            $queryConFiltro = $this->aplicarFiltroPrefijos(clone $queryRayos, 'nombre_archivo', $filtrarPrefijos, $prefijosCadenas);
+            $documentosRayos = $queryConFiltro->get();
+            
+            Log::info("📄 rayosxod - Encontrados con filtros: " . $documentosRayos->count());
+            
+            foreach ($documentosRayos as $index => $doc) {
+                Log::info("Procesando doc rayos #{$index}", [
+                    'id' => $doc->id,
+                    'nombre_archivo' => $doc->nombre_archivo ?? 'NULL',
+                    'ruta' => $doc->ruta ?? 'NULL'
+                ]);
+                
+                $procesado = $this->procesarDocumento($doc, 'rayosxod', $filtrarPrefijos, $prefijosCadenas);
+                if ($procesado) {
+                    $documentosCombinados[] = $procesado;
+                    Log::info("✅ Documento AGREGADO: {$procesado->nombre_archivo}");
+                } else {
+                    Log::warning("❌ Documento RECHAZADO ID: {$doc->id}");
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("💥 Error en rayosxod: " . $e->getMessage());
+        }
+
+        Log::info("📊 TOTAL documentos para cédula {$cedula}: " . count($documentosCombinados));
+        $resultados[$cedula] = $documentosCombinados;
+    }
+
+    // ========== VERIFICAR RESULTADOS FINALES ==========
+    $hayResultadosReales = false;
+    foreach ($resultados as $cedula => $docs) {
+        if (!empty($docs)) {
+            $hayResultadosReales = true;
+            Log::info("✅ Cédula {$cedula} tiene " . count($docs) . " documentos");
+        } else {
+            Log::warning("⚠️ Cédula {$cedula} NO tiene documentos después del filtrado");
+        }
+    }
+
+    Log::info("========== FIN BÚSQUEDA ==========");
+    Log::info("¿Hay resultados reales?: " . ($hayResultadosReales ? 'SÍ' : 'NO'));
+
+    if (!$hayResultadosReales) {
+        Log::warning("❌ NO se encontraron resultados que pasen los filtros");
+        return back()->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas o no tienes permisos para verlos.');
+    }
+
+    return view('certificados_e.resultados', compact('resultados'));
+}
     /**
      * Aplica el filtro de prefijos a una query si es necesario.
      */
