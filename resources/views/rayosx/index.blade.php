@@ -19,31 +19,32 @@
             </tr>
         </thead>
 
-        <td>
-    @php
-        $rutaCompleta = storage_path('app/public/' . $item->ruta);
-    @endphp
-
-    {{ $item->ruta }} <br>
-
-    @if(file_exists($rutaCompleta))
-        <span style="color:green;">✔ EXISTE</span>
-    @else
-        <span style="color:red;">❌ NO EXISTE</span>
-    @endif
-</td>
         <tbody>
             @forelse($registros as $item)
+                @php
+                    $rutaCompleta = storage_path('app/public/' . $item->ruta);
+                @endphp
+
                 <tr>
                     <td>{{ $item->nombre }}</td>
                     <td>{{ $item->cedula }}</td>
                     <td>{{ $item->fecha_rx }}</td>
+
                     <td>
-                        <a href="{{ asset('storage/' . $item->ruta) }}" target="_blank" class="btn btn-sm btn-success">
+                        {{ $item->ruta }} <br>
+
+                        @if(file_exists($rutaCompleta))
+                            <span style="color:green;">✔ EXISTE</span><br>
+                        @else
+                            <span style="color:red;">❌ NO EXISTE</span><br>
+                        @endif
+
+                        <a href="{{ url('/ver-rx/' . $item->id) }}" target="_blank" class="btn btn-sm btn-success">
                             Ver
                         </a>
                     </td>
                 </tr>
+
             @empty
                 <tr>
                     <td colspan="4">No hay registros</td>
