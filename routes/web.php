@@ -11,6 +11,7 @@ use App\Http\Controllers\CertificadoEController;
 use App\Http\Controllers\TrabajadorController;
 use App\Http\Middleware\AuthenticateTrabajador;
 use App\Http\Controllers\ClienteCertificadoController;
+use App\Http\Controllers\RayosXController;
 
 // Página de inicio
 Route::get('/', function () {
@@ -109,6 +110,15 @@ Route::get('/debug-session', function () {
         'cookies' => request()->cookies->all(),
     ];
 });
+
+Route::middleware('auth')->group(function () {
+
+    Route::get('/rayosx/create', [RayosXController::class, 'create'])->name('rayosx.create');
+    Route::post('/rayosx', [RayosXController::class, 'store'])->name('rayosx.store');
+
+});
+
+Route::get('/rayosx', [RayosXController::class, 'index'])->name('rayosx.index');
 
 // CORREGIDO: Usa la clase directamente
 Route::get('/test-trabajador', function () {

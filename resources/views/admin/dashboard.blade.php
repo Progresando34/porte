@@ -1,3 +1,18 @@
+<style>
+.card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: black;
+    width: 200px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.card:hover {
+    background: #f5f5f5;
+}
+</style>
+
 @extends('layouts.app')
 
 @section('content')
@@ -30,6 +45,8 @@
                 </div>
             </div>
         </div>
+
+        
         
         <div class="col-md-3 mb-3">
             <div class="card text-center">
@@ -43,6 +60,26 @@
                 </div>
             </div>
         </div>
+
+ <div class="row mt-4">
+
+    {{-- MÓDULO RAYOS X --}}
+    <div class="col-md-3 mb-3">
+        <div class="card text-center shadow-sm">
+            <div class="card-body">
+                <h1 class="display-4">
+                    <i class="fas fa-x-ray"></i>
+                </h1>
+                <h5>Rayos X</h5>
+                <p class="card-text">Gestión de estudios radiológicos</p>
+
+                <a href="{{ route('rayosx.create') }}" class="btn btn-success mb-2">Registrar</a>
+                <a href="{{ route('rayosx.index') }}" class="btn btn-primary">Ver</a>
+            </div>
+        </div>
+    </div>
+
+</div>
         
         <div class="col-md-3 mb-3">
             <div class="card text-center">
