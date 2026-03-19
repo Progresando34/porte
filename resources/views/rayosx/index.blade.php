@@ -18,6 +18,20 @@
                 <th>Archivo</th>
             </tr>
         </thead>
+
+        <td>
+    @php
+        $rutaCompleta = storage_path('app/public/' . $item->ruta);
+    @endphp
+
+    {{ $item->ruta }} <br>
+
+    @if(file_exists($rutaCompleta))
+        <span style="color:green;">✔ EXISTE</span>
+    @else
+        <span style="color:red;">❌ NO EXISTE</span>
+    @endif
+</td>
         <tbody>
             @forelse($registros as $item)
                 <tr>

@@ -159,3 +159,14 @@ Route::get('/debug-test', function () {
     \Illuminate\Support\Facades\Log::info('🧪 RUTA DE PRUEBA FUNCIONA');
     return '✅ Esta ruta está activa';
 });
+
+Route::get('/ver-rx/{id}', function ($id) {
+    $rx = \App\Models\RayosX::findOrFail($id);
+    $path = storage_path('app/public/' . $rx->ruta);
+
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path);
+});
