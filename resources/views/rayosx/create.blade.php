@@ -24,7 +24,7 @@
     @endif
 
     <div class="card p-4 shadow-sm">
-        <form action="{{ route('rayosx.store') }}" method="POST">
+        <form action="{{ route('rayosx.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
 
             <div class="mb-3">
@@ -42,14 +42,10 @@
                 <input type="date" name="fecha_rx" class="form-control" required>
             </div>
 
+            {{-- 🔥 ESTE ES EL CAMPO IMPORTANTE --}}
             <div class="mb-3">
-                <label class="form-label">Nombre del archivo (exacto):</label>
-                <input type="text" name="nombre_archivo" class="form-control" required>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Ruta FTP:</label>
-                <input type="text" name="ruta" class="form-control" required>
+                <label class="form-label">Archivo (PDF / DOCX):</label>
+                <input type="file" name="archivo" class="form-control" required>
             </div>
 
             <button type="submit" class="btn btn-success">Guardar</button>
