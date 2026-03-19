@@ -126,14 +126,7 @@ Route::get('/test-tabla', function () {
     }
 });
 
-Route::middleware('auth')->group(function () {
 
-    Route::get('/rayosx/create', [RayosXController::class, 'create'])->name('rayosx.create');
-    Route::post('/rayosx', [RayosXController::class, 'store'])->name('rayosx.store');
-
-});
-
-Route::get('/rayosx', [RayosXController::class, 'index'])->name('rayosx.index');
 
 // CORREGIDO: Usa la clase directamente
 Route::get('/test-trabajador', function () {
