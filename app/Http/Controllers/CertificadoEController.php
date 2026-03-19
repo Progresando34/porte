@@ -255,102 +255,147 @@ public function buscar(Request $request)
     /**
      * Procesa un documento de cualquier tabla para unificarlo en un objeto estándar.
      */
-    private function procesarDocumento($doc, $origen, $filtrarPrefijos, $prefijosCadenas)
-    {
-        $nombreArchivo = '';
-        $rutaArchivoBD = null;
+private function procesarDocumento($doc, $origen, $filtrarPrefijos, $prefijosCadenas)
+{
+    $nombreArchivo = '';
+    $rutaArchivoBD = null;
 
-        if ($origen === 'documentos_empresas') {
-            $nombreArchivo = $doc->filename ?? 'documento_' . $doc->id . '.pdf';
-            $rutaArchivoBD = $doc->ruta_archivo ?? null;
-        } elseif ($origen === 'rayosxod') {
-            $nombreArchivo = $doc->nombre_archivo ?? 'rx_' . $doc->id . '.pdf';
-            $rutaArchivoBD = $doc->ruta ?? null;
-        }
-
-        $info = $this->interpretarCertificado($nombreArchivo);
-        $prefijoArchivo = $info['prefijo'];
-
-        if ($filtrarPrefijos && !empty($prefijosCadenas) && !empty($prefijoArchivo)) {
-            if (!in_array($prefijoArchivo, $prefijosCadenas)) {
-                Log::info("Documento ID {$doc->id} (origen: {$origen}) con prefijo '{$prefijoArchivo}' no permitido. Saltando.");
-                return null;
-            }
-        }
-
-        $rutaFisica = $this->obtenerRutaFisica($doc, $origen);
-        $archivoExiste = $rutaFisica && file_exists($rutaFisica);
-
-        if (!$archivoExiste) {
-            Log::warning("Archivo físico NO encontrado para documento ID {$doc->id} (origen: {$origen}). Ruta: " . ($rutaFisica ?? 'N/A'));
-            return null;
-        }
-
-        return (object)[
-            'id' => $doc->id,
-            'origen' => $origen,
-            'nombre_archivo' => $nombreArchivo,
-            'descripcion' => $info['descripcion'],
-            'fecha' => $info['fecha'],
-            'tipo' => $prefijoArchivo,
-            'fecha_creacion' => $doc->created_at ?? null,
-            'ruta_archivo' => $rutaArchivoBD,
-            'ruta_fisica' => $rutaFisica,
-            'archivo_existe' => $archivoExiste,
-        ];
+    if ($origen === 'documentos_empresas') {
+        $nombreArchivo = $doc->filename ?? 'documento_' . $doc->id . '.pdf';
+        $rutaArchivoBD = $doc->ruta_archivo ?? null;
+    } elseif ($origen === 'rayosxod') {
+        $nombreArchivo = $doc->nombre_archivo ?? 'rx_' . $doc->id . '.jpg'; // Por defecto .jpg
+        $rutaArchivoBD = $doc->ruta ?? null;
     }
 
-    /**
-     * Obtiene la ruta física del archivo
-     */
-    private function obtenerRutaFisica($documento, $origen)
-    {
-        $cedula = $documento->cedula ?? '';
-        $filename = '';
+    $info = $this->interpretarCertificado($nombreArchivo);
+    $prefijoArchivo = $info['prefijo'];
 
-        if ($origen === 'documentos_empresas') {
-            $filename = $documento->filename ?? '';
-            if (isset($documento->ruta_archivo) && !empty($documento->ruta_archivo)) {
-                $rutaRelativa = $documento->ruta_archivo;
-                $rutaPublic = str_replace('storage/', 'public/', $rutaRelativa);
-                $rutaAbsoluta = storage_path('app/' . $rutaPublic);
-                $rutaAlternativa = public_path($rutaRelativa);
-                if (file_exists($rutaAbsoluta)) return $rutaAbsoluta;
-                if (file_exists($rutaAlternativa)) return $rutaAlternativa;
-            }
-        } elseif ($origen === 'rayosxod') {
-            $filename = $documento->nombre_archivo ?? '';
-            if (isset($documento->ruta) && !empty($documento->ruta)) {
-                $rutaEnBD = $documento->ruta;
-                if (file_exists($rutaEnBD)) {
-                    return $rutaEnBD;
-                }
-                $rutasPosibles = [
-                    storage_path('app/public/' . $rutaEnBD),
-                    public_path('storage/' . $rutaEnBD),
-                    base_path('storage/app/public/' . $rutaEnBD),
-                ];
-                foreach ($rutasPosibles as $ruta) {
-                    if (file_exists($ruta)) return $ruta;
-                }
-            }
+    if ($filtrarPrefijos && !empty($prefijosCadenas) && !empty($prefijoArchivo)) {
+        if (!in_array($prefijoArchivo, $prefijosCadenas)) {
+            Log::info("Documento ID {$doc->id} (origen: {$origen}) con prefijo '{$prefijoArchivo}' no permitido. Saltando.");
+            return null;
         }
+    }
 
-        if ($origen === 'documentos_empresas' && !empty($cedula) && !empty($filename)) {
-            $rutasPosibles = [
-                storage_path('app/public/storage/RESULTADOS/' . $cedula . '/' . $filename),
-                public_path('storage/RESULTADOS/' . $cedula . '/' . $filename),
-                base_path('storage/app/public/RESULTADOS/' . $cedula . '/' . $filename),
-            ];
-            foreach ($rutasPosibles as $ruta) {
-                if (file_exists($ruta)) return $ruta;
-            }
+    $rutaFisica = $this->obtenerRutaFisica($doc, $origen);
+    $archivoExiste = $rutaFisica && file_exists($rutaFisica);
+
+    if (!$archivoExiste) {
+        Log::warning("Archivo físico NO encontrado para documento ID {$doc->id} (origen: {$origen}). Ruta: " . ($rutaFisica ?? 'N/A'));
+        
+        // AGREGAR DEBUG PARA VER QUÉ RUTAS SE ESTÁN PROBANDO
+        Log::debug("Rutas probadas para documento ID {$doc->id}:");
+        if ($origen === 'rayosxod') {
+            Log::debug("- Ruta en BD: " . ($doc->ruta ?? 'NULL'));
+            Log::debug("- Nombre archivo: " . ($doc->nombre_archivo ?? 'NULL'));
         }
-
-        Log::warning("No se pudo determinar la ruta física. Origen: {$origen}, ID: " . ($documento->id ?? 'N/A'));
+        
         return null;
     }
 
+    return (object)[
+        'id' => $doc->id,
+        'origen' => $origen,
+        'nombre_archivo' => $nombreArchivo,
+        'descripcion' => $info['descripcion'],
+        'fecha' => $info['fecha'],
+        'tipo' => $prefijoArchivo,
+        'fecha_creacion' => $doc->created_at ?? null,
+        'ruta_archivo' => $rutaArchivoBD,
+        'ruta_fisica' => $rutaFisica,
+        'archivo_existe' => $archivoExiste,
+    ];
+}
+    /**
+     * Obtiene la ruta física del archivo
+     */
+private function obtenerRutaFisica($documento, $origen)
+{
+    $cedula = $documento->cedula ?? '';
+    $filename = '';
+
+    if ($origen === 'documentos_empresas') {
+        $filename = $documento->filename ?? '';
+        if (isset($documento->ruta_archivo) && !empty($documento->ruta_archivo)) {
+            $rutaRelativa = $documento->ruta_archivo;
+            $rutaPublic = str_replace('storage/', 'public/', $rutaRelativa);
+            $rutaAbsoluta = storage_path('app/' . $rutaPublic);
+            $rutaAlternativa = public_path($rutaRelativa);
+            if (file_exists($rutaAbsoluta)) return $rutaAbsoluta;
+            if (file_exists($rutaAlternativa)) return $rutaAlternativa;
+        }
+    } elseif ($origen === 'rayosxod') {
+        $filename = $documento->nombre_archivo ?? '';
+        
+        // DEBUG: Registrar qué estamos buscando
+        Log::info("Buscando archivo rayosxod:", [
+            'id' => $documento->id,
+            'cedula' => $cedula,
+            'nombre_archivo' => $filename,
+            'ruta_bd' => $documento->ruta ?? 'NULL'
+        ]);
+        
+        if (isset($documento->ruta) && !empty($documento->ruta)) {
+            $rutaEnBD = $documento->ruta;
+            
+            // Si la ruta es absoluta y existe
+            if (file_exists($rutaEnBD)) {
+                Log::info("✅ Archivo encontrado en ruta absoluta: {$rutaEnBD}");
+                return $rutaEnBD;
+            }
+            
+            // Probar diferentes combinaciones de rutas
+            $rutasPosibles = [
+                // Ruta directa desde public/storage
+                public_path('storage/' . $rutaEnBD),
+                // Ruta desde storage/app/public
+                storage_path('app/public/' . $rutaEnBD),
+                // Ruta base
+                base_path($rutaEnBD),
+                // Si la ruta ya incluye 'storage/'
+                public_path($rutaEnBD),
+                storage_path('app/' . $rutaEnBD),
+            ];
+            
+            // También probar con la cédula como carpeta
+            if (!empty($cedula)) {
+                $rutasPosibles[] = public_path('storage/rayosxod/' . $cedula . '/' . $filename);
+                $rutasPosibles[] = storage_path('app/public/rayosxod/' . $cedula . '/' . $filename);
+                $rutasPosibles[] = public_path('storage/RESULTADOS/' . $cedula . '/' . $filename);
+                $rutasPosibles[] = storage_path('app/public/RESULTADOS/' . $cedula . '/' . $filename);
+            }
+            
+            foreach ($rutasPosibles as $ruta) {
+                if (file_exists($ruta)) {
+                    Log::info("✅ Archivo encontrado en: {$ruta}");
+                    return $ruta;
+                }
+            }
+            
+            // Si no se encontró, listar las rutas probadas para debug
+            Log::warning("❌ Archivo NO encontrado. Rutas probadas:");
+            foreach ($rutasPosibles as $ruta) {
+                Log::warning("   - {$ruta}");
+            }
+        }
+    }
+
+    // ... resto del código para documentos_empresas
+    if ($origen === 'documentos_empresas' && !empty($cedula) && !empty($filename)) {
+        $rutasPosibles = [
+            storage_path('app/public/storage/RESULTADOS/' . $cedula . '/' . $filename),
+            public_path('storage/RESULTADOS/' . $cedula . '/' . $filename),
+            base_path('storage/app/public/RESULTADOS/' . $cedula . '/' . $filename),
+        ];
+        foreach ($rutasPosibles as $ruta) {
+            if (file_exists($ruta)) return $ruta;
+        }
+    }
+
+    Log::warning("No se pudo determinar la ruta física. Origen: {$origen}, ID: " . ($documento->id ?? 'N/A'));
+    return null;
+}
     /**
      * Visualizar documento
      */
@@ -562,21 +607,35 @@ public function buscar(Request $request)
     /**
      * Obtener MIME type basado en extensión
      */
-    private function obtenerMimeType($nombreArchivo)
-    {
-        $extension = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
-        $mimeTypes = [
-            'pdf' => 'application/pdf',
-            'jpg' => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'png' => 'image/png',
-            'doc' => 'application/msword',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'xls' => 'application/vnd.ms-excel',
-            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ];
-        return $mimeTypes[$extension] ?? 'application/octet-stream';
-    }
+  private function obtenerMimeType($nombreArchivo)
+{
+    $extension = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+    
+    $mimeTypes = [
+        // PDF
+        'pdf' => 'application/pdf',
+        
+        // Imágenes
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'bmp' => 'image/bmp',
+        'webp' => 'image/webp',
+        
+        // Documentos
+        'doc' => 'application/msword',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls' => 'application/vnd.ms-excel',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        
+        // Otros
+        'txt' => 'text/plain',
+        'csv' => 'text/csv',
+    ];
+    
+    return $mimeTypes[$extension] ?? 'application/octet-stream';
+}
 
     /**
      * Interpretar el nombre del certificado
