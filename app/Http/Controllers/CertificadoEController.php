@@ -924,101 +924,133 @@ private function obtenerRutaFisica($documento, $origen)
     /**
      * Interpretar el nombre del certificado
      */
-    private function interpretarCertificado($nombreArchivo)
-    {
-        Log::info("Interpretando certificado: {$nombreArchivo}");
+  
+/**
+ * Interpretar el nombre del certificado
+ */
+private function interpretarCertificado($nombreArchivo)
+{
+    Log::info("Interpretando certificado: {$nombreArchivo}");
 
-        $prefijos = [
-            'H' => 'Historia ocupacional, ingreso, egreso, periódico',
-            'HING' => 'Historia ocupacional de ingreso en el examen ingreso/egreso',
-            'HG' => 'Historia Medicina General',
-            'HCV' => 'Historia Cardiovascular',
-            'HNU' => 'Historia de Nutrición',
-            'C' => 'Certificado de aptitud ocupacional',
-            'CTA' => 'Certificado CENS o certificado de Alturas',
-            'CMA' => 'Certificado de manipulación de alimentos',
-            'V' => 'Vertigo',
-            'OM' => 'Osteomuscular',
-            'A' => 'Audiometría',
-            'EV' => 'Examen de voz',
-            'O' => 'Optometría',
-            'VIS' => 'Visiometría',
-            'E' => 'Espirometría',
-            'RE' => 'Resultado Espirometría',
-            'L' => 'Laboratorio Clínico',
-            'S' => 'Psicología',
-            'RT' => 'Rx Torax',
-            'R' => 'RX Columna',
-            'EKG' => 'Electrocardiograma',
-            'REM' => 'Remisión a EPS',
-            'RPYP' => 'Remisión a PYP',
-            'CV' => 'Carnet de vacunas',
-            'VF' => 'Valoración Fisioterapia',
-            'CM' => 'Coordinación Motriz',
-            'PS' => 'Psicosensometrica',
-            'CI' => 'Certificado de ingreso',
-            'TH' => 'Toxicología',
-            'ARM' => 'Documento adicional',
-            'dx' => 'RX ODONTOLOGIA',
-            'J' => 'Documento general',
-            'TESTPSICOLOGIA' => 'Test psicológico',
-            'CILEGAL' => 'Certificado legal',
-            'CILD' => 'Certificado legal documentado',
-            'CIL' => 'Certificado legal intermedio',
-        ];
+    // Diccionario de prefijos (ordenados de mayor a menor longitud para priorizar coincidencias exactas)
+    $prefijos = [
+        // Prefijos largos primero
+        'HING' => 'Historia ocupacional de ingreso en el examen ingreso/egreso',
+        'HCV' => 'Historia Cardiovascular',
+        'HNU' => 'Historia de Nutrición',
+        'TESTPSICOLOGIA' => 'Test psicológico',
+        'CILEGAL' => 'Certificado legal',
+        'CILD' => 'Certificado legal documentado',
+        'CIL' => 'Certificado legal intermedio',
+        'CTA' => 'Certificado CENS o certificado de Alturas',
+        'CMA' => 'Certificado de manipulación de alimentos',
+        'EKG' => 'Electrocardiograma',
+        'REM' => 'Remisión a EPS',
+        'RPYP' => 'Remisión a PYP',
+        'CV' => 'Carnet de vacunas',
+        'VF' => 'Valoración Fisioterapia',
+        'CM' => 'Coordinación Motriz',
+        'PS' => 'Psicosensometrica',
+        'ARM' => 'Documento adicional',
+        // Prefijos medianos
+        'HG' => 'Historia Medicina General',
+        'RT' => 'Rx Torax',
+        'RE' => 'Resultado Espirometría',
+        'CI' => 'Certificado de ingreso',
+        'TH' => 'Toxicología',
+        'dxodo' => 'RX Odontología',  // ⚠️ IMPORTANTE: agregar dxodo
+        // Prefijos cortos
+        'H' => 'Historia ocupacional, ingreso, egreso, periódico',
+        'C' => 'Certificado de aptitud ocupacional',
+        'V' => 'Vertigo',
+        'OM' => 'Osteomuscular',
+        'A' => 'Audiometría',
+        'EV' => 'Examen de voz',
+        'O' => 'Optometría',
+        'VIS' => 'Visiometría',
+        'E' => 'Espirometría',
+        'L' => 'Laboratorio Clínico',
+        'S' => 'Psicología',
+        'R' => 'RX Columna',
+        'J' => 'Documento general',
+        'dx' => 'RX ODONTOLOGIA',
+    ];
 
-        $nombreLimpio = pathinfo($nombreArchivo, PATHINFO_FILENAME);
-        $nombreMayus = strtoupper($nombreLimpio);
+    $nombreLimpio = pathinfo($nombreArchivo, PATHINFO_FILENAME);
+    $nombreMayus = strtoupper($nombreLimpio);
 
-        if (in_array($nombreMayus, ['DOCUMENTO', 'DOC', 'FILE', 'ARCHIVO'])) {
-            return ['prefijo' => '', 'descripcion' => 'Documento empresarial', 'fecha' => '', 'nombre_original' => $nombreArchivo];
-        }
+    Log::info("Nombre limpio: {$nombreLimpio}, Mayúsculas: {$nombreMayus}");
 
-        $prefijoEncontrado = '';
-        $descripcion = 'Documento empresarial';
-
-        foreach ($prefijos as $prefijo => $desc) {
-            $prefijoMayus = strtoupper($prefijo);
-            if (strpos($nombreMayus, $prefijoMayus) === 0) {
-                if (strlen($prefijo) > strlen($prefijoEncontrado)) {
-                    $prefijoEncontrado = $prefijo;
-                    $descripcion = $desc;
-                }
-            }
-        }
-
-        $fecha = '';
-        if ($prefijoEncontrado) {
-            $resto = substr($nombreLimpio, strlen($prefijoEncontrado));
-            $patronesFecha = [
-                '/^[_-]*(\d{8})/',
-                '/^[_-]*(\d{6})/',
-                '/^[_-]*(\d{4}-\d{2}-\d{2})/',
-                '/^[_-]*(\d{2}-\d{2}-\d{4})/',
-            ];
-            foreach ($patronesFecha as $patron) {
-                if (preg_match($patron, $resto, $matches)) {
-                    $fechaStr = $matches[1];
-                    if (strlen($fechaStr) === 8 && is_numeric($fechaStr)) {
-                        $fecha = substr($fechaStr, 0, 4) . '-' . substr($fechaStr, 4, 2) . '-' . substr($fechaStr, 6, 2);
-                    } elseif (strlen($fechaStr) === 6 && is_numeric($fechaStr)) {
-                        $anio = '20' . substr($fechaStr, 0, 2);
-                        $fecha = $anio . '-' . substr($fechaStr, 2, 2) . '-' . substr($fechaStr, 4, 2);
-                    } elseif (strpos($fechaStr, '-') !== false) {
-                        $fecha = $fechaStr;
-                    }
-                    if (!empty($fecha)) break;
-                }
-            }
-        }
-
-        return [
-            'prefijo' => $prefijoEncontrado,
-            'descripcion' => $descripcion,
-            'fecha' => $fecha,
-            'nombre_original' => $nombreArchivo
-        ];
+    // Si el nombre es genérico, no intentar buscar prefijo
+    if (in_array($nombreMayus, ['DOCUMENTO', 'DOC', 'FILE', 'ARCHIVO'])) {
+        return ['prefijo' => '', 'descripcion' => 'Documento empresarial', 'fecha' => '', 'nombre_original' => $nombreArchivo];
     }
+
+    $prefijoEncontrado = '';
+    $descripcion = 'Documento empresarial';
+
+    // Buscar el prefijo que coincida exactamente al inicio del nombre
+    foreach ($prefijos as $prefijo => $desc) {
+        $prefijoMayus = strtoupper($prefijo);
+        // Verificar si el nombre comienza con este prefijo
+        if (strpos($nombreMayus, $prefijoMayus) === 0) {
+            Log::info("Coincidencia encontrada: '{$prefijoMayus}' en '{$nombreMayus}'");
+            // Tomar el prefijo más largo que coincida
+            if (strlen($prefijo) > strlen($prefijoEncontrado)) {
+                $prefijoEncontrado = $prefijo;
+                $descripcion = $desc;
+                Log::info("✅ Prefijo seleccionado: {$prefijo} - {$desc}");
+            }
+        }
+    }
+
+    // Extraer fecha
+    $fecha = '';
+    if ($prefijoEncontrado) {
+        $resto = substr($nombreLimpio, strlen($prefijoEncontrado));
+        Log::info("Resto después del prefijo: {$resto}");
+        
+        $patronesFecha = [
+            '/^[_-]*(\d{8})/',  // YYYYMMDD
+            '/^[_-]*(\d{6})/',  // YYMMDD
+            '/^[_-]*(\d{4}-\d{2}-\d{2})/', // YYYY-MM-DD
+            '/^[_-]*(\d{2}-\d{2}-\d{4})/', // DD-MM-YYYY
+        ];
+        
+        foreach ($patronesFecha as $patron) {
+            if (preg_match($patron, $resto, $matches)) {
+                $fechaStr = $matches[1];
+                
+                if (strlen($fechaStr) === 8 && is_numeric($fechaStr)) {
+                    $fecha = substr($fechaStr, 0, 4) . '-' . 
+                             substr($fechaStr, 4, 2) . '-' . 
+                             substr($fechaStr, 6, 2);
+                } elseif (strlen($fechaStr) === 6 && is_numeric($fechaStr)) {
+                    $anio = '20' . substr($fechaStr, 0, 2);
+                    $fecha = $anio . '-' . 
+                             substr($fechaStr, 2, 2) . '-' . 
+                             substr($fechaStr, 4, 2);
+                } elseif (strpos($fechaStr, '-') !== false) {
+                    $fecha = $fechaStr;
+                }
+                
+                if (!empty($fecha)) {
+                    Log::info("Fecha extraída: {$fecha}");
+                    break;
+                }
+            }
+        }
+    }
+
+    return [
+        'prefijo' => $prefijoEncontrado,
+        'descripcion' => $descripcion,
+        'fecha' => $fecha,
+        'nombre_original' => $nombreArchivo
+    ];
+}
+
+
 
     public function indexTrabajador()
     {
