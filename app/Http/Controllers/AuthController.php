@@ -16,6 +16,52 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
+    // Agrega estos métodos al final de la clase AuthController
+
+public function showChangePasswordForm()
+{
+    // Verificar que sea un trabajador autenticado
+    if (!session()->has('trabajador_autenticado')) {
+        return redirect()->route('login.form')->with('error', 'Debes iniciar sesión primero.');
+    }
+    
+    return view('trabajador.actualizar-password');
+}
+
+public function updatePassword(Request $request)
+{
+    // Verificar que sea un trabajador autenticado
+    if (!session()->has('trabajador_autenticado')) {
+        return redirect()->route('login.form')->with('error', 'Debes iniciar sesión primero.');
+    }
+    
+    $request->validate([
+        'current_password' => 'required|string',
+        'new_password' => 'required|string|min:6|confirmed',
+    ]);
+    
+    $trabajadorId = session('trabajador_id');
+    $trabajador = Trabajador::find($trabajadorId);
+    
+    if (!$trabajador) {
+        return back()->with('error', 'Trabajador no encontrado.');
+    }
+    
+    // Verificar contraseña actual
+    if (!Hash::check($request->current_password, $trabajador->password)) {
+        return back()->with('error', 'La contraseña actual es incorrecta.');
+    }
+    
+    // Actualizar contraseña
+    $trabajador->password = Hash::make($request->new_password);
+    $trabajador->save();
+    
+    Log::info('Trabajador ' . $trabajador->nombre . ' actualizó su contraseña');
+    
+    return redirect()->route('trabajador.certificados.index')
+        ->with('success', 'Contraseña actualizada correctamente.');
+}
+
     public function login(Request $request)
 {
     $request->validate([
