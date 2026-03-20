@@ -163,7 +163,7 @@
         <button type="submit">🔍 Consultar mis certificados</button>
     </form>
 
-    <form method="GET" action="{{ route('trabajador.actualizar-password-form') }}" style="margin-top: 10px;">
+    <form method="GET" action="{{ route('trabajadores.actualizar-password-form') }}" style="margin-top: 10px;">
     <button type="submit" style="background: #17a2b8;">🔐 Cambiar contraseña</button>
 </form>
 
