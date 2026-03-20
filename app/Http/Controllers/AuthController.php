@@ -25,7 +25,7 @@ public function showChangePasswordForm()
         return redirect()->route('login.form')->with('error', 'Debes iniciar sesión primero.');
     }
     
-    return view('trabajador.actualizar-password');
+    return view('trabajadores.actualizar-password');
 }
 
 public function updatePassword(Request $request)
