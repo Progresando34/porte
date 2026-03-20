@@ -21,47 +21,130 @@ public function buscar(Request $request)
     $cedulaSimple = $request->input('cedula', '');
     $resultados = [];
 
-    // ========== SIMPLIFICACIÓN TOTAL ==========
-    // Para pruebas, forzamos la cédula que sabemos que funciona
-    $cedula = '1091657847';
+    // ========== LIMPIAR Y PREPARAR CÉDULAS A BUSCAR ==========
+    $cedulasABuscar = [];
     
-    try {
-        // Buscar DIRECTAMENTE en rayosxod
-        $registros = DB::table('rayosxod')
-            ->where('cedula', $cedula)
-            ->get();
-        
-        $documentos = [];
-        
-        foreach ($registros as $doc) {
-            // Construir ruta física
-            $rutaFisica = storage_path('app/public/RESULTADOS/' . $cedula . '/' . $doc->nombre_archivo);
-            
-            if (file_exists($rutaFisica)) {
-                $documentos[] = (object)[
-                    'id' => $doc->id,
-                    'origen' => 'rayosxod',
-                    'nombre_archivo' => $doc->nombre_archivo,
-                    'descripcion' => 'RX Odontología',
-                    'fecha' => $doc->fecha_rx ?? '',
-                    'tipo' => 'dx',
-                    'ruta_fisica' => $rutaFisica,
-                    'archivo_existe' => true,
-                ];
+    // Agregar cédula simple si existe
+    if (!empty($cedulaSimple)) {
+        $cedulaLimpia = preg_replace('/[^0-9]/', '', trim($cedulaSimple));
+        if (!empty($cedulaLimpia)) {
+            $cedulasABuscar[] = $cedulaLimpia;
+        }
+    }
+    
+    // Agregar cédulas múltiples
+    if (!empty($cedulasInput) && is_array($cedulasInput)) {
+        foreach ($cedulasInput as $cedula) {
+            if (!empty($cedula)) {
+                $cedulaLimpia = preg_replace('/[^0-9]/', '', trim($cedula));
+                if (!empty($cedulaLimpia) && !in_array($cedulaLimpia, $cedulasABuscar)) {
+                    $cedulasABuscar[] = $cedulaLimpia;
+                }
             }
         }
-        
-        $resultados[$cedula] = $documentos;
-        
-        Log::info("Documentos encontrados: " . count($documentos));
-        
-    } catch (\Exception $e) {
-        Log::error("Error: " . $e->getMessage());
-        return back()->with('mensaje', 'Error: ' . $e->getMessage());
+    }
+    
+    if (empty($cedulasABuscar)) {
+        return back()->with('mensaje', 'Ingrese al menos una cédula válida');
     }
 
-    if (empty($resultados[$cedula])) {
-        return back()->with('mensaje', 'No se encontraron documentos.');
+    // ========== BUSCAR EN AMBAS TABLAS PARA CADA CÉDULA ==========
+    foreach ($cedulasABuscar as $cedula) {
+        $documentos = [];
+        
+        try {
+            Log::info("Buscando documentos para cédula: {$cedula}");
+            
+            // 1. BUSCAR EN TABLA rayosxod
+            $rayosXod = DB::table('rayosxod')
+                ->where('cedula', $cedula)
+                ->get();
+            
+            Log::info("Rayos X encontrados para cédula {$cedula}: " . $rayosXod->count());
+            
+            foreach ($rayosXod as $doc) {
+                // Construir ruta física para rayos X
+                $rutaFisica = storage_path('app/public/RESULTADOS/' . $cedula . '/' . $doc->nombre_archivo);
+                $rutaAlternativa = public_path('storage/RESULTADOS/' . $cedula . '/' . $doc->nombre_archivo);
+                
+                $rutaUsar = null;
+                if (file_exists($rutaFisica)) {
+                    $rutaUsar = $rutaFisica;
+                } elseif (file_exists($rutaAlternativa)) {
+                    $rutaUsar = $rutaAlternativa;
+                }
+                
+                if ($rutaUsar) {
+                    $documentos[] = (object)[
+                        'id' => $doc->id,
+                        'origen' => 'rayosxod',
+                        'nombre_archivo' => $doc->nombre_archivo,
+                        'descripcion' => 'RX Odontología',
+                        'fecha' => $doc->fecha_rx ?? ($doc->created_at ?? ''),
+                        'tipo' => 'rx',
+                        'ruta_fisica' => $rutaUsar,
+                        'archivo_existe' => true,
+                    ];
+                    Log::info("✅ Documento rayos X agregado: {$doc->nombre_archivo}");
+                } else {
+                    Log::warning("❌ Archivo no encontrado para rayos X ID: {$doc->id}, ruta: {$rutaFisica}");
+                }
+            }
+            
+            // 2. BUSCAR EN TABLA documentos_empresas (opcional)
+            $documentosEmpresas = DB::table('documentos_empresas')
+                ->where('cedula', $cedula)
+                ->get();
+            
+            Log::info("Documentos empresa para cédula {$cedula}: " . $documentosEmpresas->count());
+            
+            foreach ($documentosEmpresas as $doc) {
+                $nombreArchivo = $doc->filename ?? 'documento_' . $doc->id . '.pdf';
+                $rutaArchivo = $this->obtenerRutaFisica($doc, 'documentos_empresas');
+                
+                if ($rutaArchivo && file_exists($rutaArchivo)) {
+                    $info = $this->interpretarCertificado($nombreArchivo);
+                    
+                    $documentos[] = (object)[
+                        'id' => $doc->id,
+                        'origen' => 'documentos_empresas',
+                        'nombre_archivo' => $nombreArchivo,
+                        'descripcion' => $info['descripcion'] ?? 'Documento',
+                        'fecha' => $info['fecha'] ?? ($doc->created_at ?? ''),
+                        'tipo' => $info['prefijo'] ?? 'doc',
+                        'ruta_fisica' => $rutaArchivo,
+                        'archivo_existe' => true,
+                    ];
+                    Log::info("✅ Documento empresa agregado: {$nombreArchivo}");
+                }
+            }
+            
+            // Ordenar documentos por fecha (más reciente primero)
+            usort($documentos, function($a, $b) {
+                return strtotime($b->fecha) - strtotime($a->fecha);
+            });
+            
+            $resultados[$cedula] = $documentos;
+            
+            Log::info("Total documentos para cédula {$cedula}: " . count($documentos));
+            
+        } catch (\Exception $e) {
+            Log::error("Error al buscar cédula {$cedula}: " . $e->getMessage());
+            $resultados[$cedula] = [];
+        }
+    }
+
+    // Verificar si hay resultados
+    $hayResultados = false;
+    foreach ($resultados as $docs) {
+        if (!empty($docs)) {
+            $hayResultados = true;
+            break;
+        }
+    }
+    
+    if (!$hayResultados) {
+        return back()->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas.');
     }
 
     return view('certificados_e.resultados', compact('resultados'));
