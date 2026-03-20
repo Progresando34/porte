@@ -61,10 +61,10 @@ Route::prefix('trabajador')->group(function () {
         ->name('trabajador.certificados.buscar');
 
         Route::get('/actualizar-password', [AuthController::class, 'showChangePasswordForm'])
-        ->name('trabajador.actualizar-password-form');
+        ->name('trabajadores.actualizar-password-form');
     
     Route::put('/actualizar-password', [AuthController::class, 'updatePassword'])
-        ->name('trabajador.actualizar-password');
+        ->name('trabajadores.actualizar-password');
 });
 
 // ========== RUTAS PARA DOCUMENTOS ==========
