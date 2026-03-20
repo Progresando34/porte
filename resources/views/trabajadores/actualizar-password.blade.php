@@ -160,7 +160,7 @@
     @endif
     
     <!-- Formulario para actualizar contraseña -->
-    <form method="POST" action="{{ route('trabajador.actualizar-password') }}">
+    <form method="POST" action="{{ route('trabajadores.actualizar-password') }}">
         @csrf
         @method('PUT')
         
@@ -177,7 +177,7 @@
     </form>
     
     <!-- Botón para volver -->
-    <form method="GET" action="{{ route('trabajador.certificados.index') }}">
+    <form method="GET" action="{{ route('trabajadores.certificados.index') }}">
         <button type="submit" class="back-btn">← Volver al panel</button>
     </form>
 </div>
