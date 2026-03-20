@@ -160,18 +160,18 @@
         <label>Tu cédula (solo puedes consultar esta):</label>
         <input type="text" value="{{ session('trabajador_cedula') }}" readonly disabled style="background-color: #f8f9fa;">
         
-        <button type="submit">🔍 Consultar mis certificados</button>
+        <button type="submit"> Consultar mis certificados</button>
     </form>
 
     <form method="GET" action="{{ route('trabajador.actualizar-password-form') }}" style="margin-top: 10px;">
-    <button type="submit" style="background: #17a2b8;">🔐 Cambiar contraseña</button>
+    <button type="submit" style="background: #17a2b8;"> Cambiar contraseña</button>
 </form>
 
     
     <!-- Botón de logout -->
     <form method="POST" action="{{ route('logout') }}" style="margin-top: 20px;">
         @csrf
-        <button type="submit" class="logout-btn">🚪 Cerrar sesión</button>
+        <button type="submit" class="logout-btn"> Cerrar sesión</button>
     </form>
 </div>
 </body>
