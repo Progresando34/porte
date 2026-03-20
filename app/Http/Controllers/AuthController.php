@@ -37,7 +37,7 @@ public function updatePassword(Request $request)
     
     $request->validate([
         'current_password' => 'required|string',
-       'new_password' => 'required|string|confirmed',
+        'new_password' => 'required|string|min:1|confirmed',
     ]);
     
     $trabajadorId = session('trabajador_id');
