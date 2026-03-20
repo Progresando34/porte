@@ -22,6 +22,59 @@ public function buscar(Request $request)
     $cedulaSimple = $request->input('cedula', '');
     $resultados = [];
 
+    // ========== OBTENER PREFIJOS DEL USUARIO AUTENTICADO ==========
+    $usuario = auth()->user();
+    $trabajadorAutenticado = session('trabajador_autenticado', false);
+    $filtrarPrefijos = true;
+    $prefijosPermitidos = [];
+    $cedulaTrabajador = session('trabajador_cedula', '');
+    
+    Log::info("=== CONFIGURACIÓN DE USUARIO ===");
+    Log::info("Trabajador autenticado: " . ($trabajadorAutenticado ? 'Sí' : 'No'));
+    Log::info("Usuario autenticado: " . (auth()->check() ? 'Sí' : 'No'));
+    
+    if ($trabajadorAutenticado) {
+        $trabajadorId = session('trabajador_id');
+        Log::info("Trabajador ID: {$trabajadorId}, Cédula: {$cedulaTrabajador}");
+        
+        $trabajador = \App\Models\Trabajador::find($trabajadorId);
+        if ($trabajador) {
+            $prefijosIds = $trabajador->obtenerPrefijosIds();
+            if (!empty($prefijosIds)) {
+                $prefijosPermitidos = \App\Models\Prefijo::whereIn('id', $prefijosIds)
+                    ->where('activo', true)
+                    ->pluck('prefijo')
+                    ->toArray();
+            }
+        }
+        $filtrarPrefijos = true;
+        
+    } elseif (auth()->check()) {
+        Log::info("Usuario ID: {$usuario->id}, Profile ID: {$usuario->profile_id}");
+        
+        // Administradores NO tienen restricciones
+        if ($usuario->esAdministrador() || $usuario->profile_id == 1) {
+            $filtrarPrefijos = false;
+            Log::info("Usuario ADMINISTRADOR - Sin restricciones de prefijos");
+        } else {
+            $prefijosIds = $usuario->obtenerPrefijosArray();
+            if (!empty($prefijosIds)) {
+                $prefijosPermitidos = \App\Models\Prefijo::whereIn('id', $prefijosIds)
+                    ->where('activo', true)
+                    ->pluck('prefijo')
+                    ->toArray();
+            }
+            $filtrarPrefijos = true;
+            Log::info("Usuario normal - Filtrando por prefijos");
+        }
+    } else {
+        Log::warning("Usuario NO autenticado");
+        return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
+    }
+    
+    Log::info("Filtrar prefijos: " . ($filtrarPrefijos ? 'Sí' : 'No'));
+    Log::info("Prefijos permitidos: " . json_encode($prefijosPermitidos));
+
     // ========== LIMPIAR Y PREPARAR CÉDULAS A BUSCAR ==========
     $cedulasABuscar = [];
     
@@ -45,11 +98,19 @@ public function buscar(Request $request)
         }
     }
     
+    // Si es trabajador, solo puede buscar su propia cédula
+    if ($trabajadorAutenticado && !empty($cedulaTrabajador)) {
+        $cedulasABuscar = array_intersect($cedulasABuscar, [$cedulaTrabajador]);
+        if (empty($cedulasABuscar)) {
+            return back()->with('mensaje', 'Solo puedes buscar tu propia cédula: ' . $cedulaTrabajador);
+        }
+    }
+    
     if (empty($cedulasABuscar)) {
         return back()->with('mensaje', 'Ingrese al menos una cédula válida');
     }
 
-    Log::info("=== BÚSQUEDA DE CERTIFICADOS ===");
+    Log::info("=== INICIO BÚSQUEDA ===");
     Log::info("Cédulas a buscar: " . json_encode($cedulasABuscar));
 
     // ========== BUSCAR EN AMBAS TABLAS PARA CADA CÉDULA ==========
@@ -57,70 +118,53 @@ public function buscar(Request $request)
         $documentos = [];
         
         try {
-            Log::info("Buscando documentos para cédula: {$cedula}");
+            Log::info("--- Buscando documentos para cédula: {$cedula} ---");
             
             // 1. BUSCAR EN TABLA documentos_empresas
             $documentosEmpresas = DB::table('documentos_empresas')
                 ->where('cedula', $cedula)
                 ->get();
             
-            Log::info("Documentos empresa para cédula {$cedula}: " . $documentosEmpresas->count());
+            Log::info("Documentos empresa encontrados (sin filtro): " . $documentosEmpresas->count());
             
             foreach ($documentosEmpresas as $doc) {
                 $nombreArchivo = $doc->filename ?? 'documento_' . $doc->id . '.pdf';
                 
-                // Buscar la ruta física del archivo
-                $rutaFisica = null;
+                // Obtener prefijo del archivo
+                $info = $this->interpretarCertificado($nombreArchivo);
+                $prefijoArchivo = $info['prefijo'];
                 
-                // Probar diferentes rutas para documentos_empresas
-                if (!empty($doc->ruta_archivo)) {
-                    $rutasPosibles = [
-                        storage_path('app/public/' . str_replace('storage/', 'public/', $doc->ruta_archivo)),
-                        public_path($doc->ruta_archivo),
-                        public_path('storage/' . $doc->ruta_archivo),
-                        storage_path('app/public/' . $doc->ruta_archivo)
-                    ];
-                    
-                    foreach ($rutasPosibles as $ruta) {
-                        if (file_exists($ruta)) {
-                            $rutaFisica = $ruta;
-                            break;
-                        }
+                Log::info("Procesando documento empresa ID: {$doc->id}, Prefijo: '{$prefijoArchivo}'");
+                
+                // APLICAR FILTRO DE PREFIJOS
+                if ($filtrarPrefijos) {
+                    if (empty($prefijosPermitidos)) {
+                        Log::info("Usuario sin prefijos permitidos, saltando documento ID: {$doc->id}");
+                        continue;
+                    }
+                    if (!empty($prefijoArchivo) && !in_array($prefijoArchivo, $prefijosPermitidos)) {
+                        Log::info("Documento con prefijo '{$prefijoArchivo}' no permitido, saltando");
+                        continue;
                     }
                 }
                 
-                // Si no se encontró por ruta_archivo, buscar por estructura
-                if (!$rutaFisica && !empty($cedula) && !empty($nombreArchivo)) {
-                    $rutasAlternativas = [
-                        storage_path('app/public/RESULTADOS/' . $cedula . '/' . $nombreArchivo),
-                        public_path('storage/RESULTADOS/' . $cedula . '/' . $nombreArchivo),
-                        storage_path('app/public/storage/RESULTADOS/' . $cedula . '/' . $nombreArchivo)
-                    ];
-                    
-                    foreach ($rutasAlternativas as $ruta) {
-                        if (file_exists($ruta)) {
-                            $rutaFisica = $ruta;
-                            break;
-                        }
-                    }
-                }
+                // Buscar la ruta física
+                $rutaFisica = $this->buscarRutaFisicaDocumento($doc, 'documentos_empresas', $cedula);
                 
                 if ($rutaFisica && file_exists($rutaFisica)) {
-                    $info = $this->interpretarCertificado($nombreArchivo);
-                    
                     $documentos[] = (object)[
                         'id' => $doc->id,
                         'origen' => 'documentos_empresas',
                         'nombre_archivo' => $nombreArchivo,
                         'descripcion' => $info['descripcion'] ?? 'Documento',
                         'fecha' => $info['fecha'] ?? ($doc->created_at ?? ''),
-                        'tipo' => $info['prefijo'] ?? 'doc',
+                        'tipo' => $prefijoArchivo,
                         'ruta_fisica' => $rutaFisica,
                         'archivo_existe' => true,
                     ];
-                    Log::info("✅ Documento empresa agregado: {$nombreArchivo} desde {$rutaFisica}");
+                    Log::info("✅ Documento empresa AGREGADO: {$nombreArchivo}");
                 } else {
-                    Log::warning("❌ Archivo no encontrado para documento empresa ID: {$doc->id}, nombre: {$nombreArchivo}");
+                    Log::warning("❌ Archivo no encontrado: {$nombreArchivo}");
                 }
             }
             
@@ -129,52 +173,55 @@ public function buscar(Request $request)
                 ->where('cedula', $cedula)
                 ->get();
             
-            Log::info("Rayos X encontrados para cédula {$cedula}: " . $rayosXod->count());
+            Log::info("Rayos X encontrados (sin filtro): " . $rayosXod->count());
             
             foreach ($rayosXod as $doc) {
                 $nombreArchivo = $doc->nombre_archivo ?? 'rx_' . $doc->id . '.jpg';
                 
-                // Construir ruta física para rayos X
-                $rutaFisica = null;
-                $rutasRayos = [
-                    storage_path('app/public/RESULTADOS/' . $cedula . '/' . $nombreArchivo),
-                    public_path('storage/RESULTADOS/' . $cedula . '/' . $nombreArchivo),
-                    storage_path('app/public/' . ($doc->ruta ?? '')),
-                    public_path('storage/' . ($doc->ruta ?? ''))
-                ];
+                // Obtener prefijo del archivo
+                $info = $this->interpretarCertificado($nombreArchivo);
+                $prefijoArchivo = $info['prefijo'];
                 
-                foreach ($rutasRayos as $ruta) {
-                    if (!empty($ruta) && file_exists($ruta)) {
-                        $rutaFisica = $ruta;
-                        break;
+                Log::info("Procesando rayos X ID: {$doc->id}, Prefijo: '{$prefijoArchivo}'");
+                
+                // APLICAR FILTRO DE PREFIJOS
+                if ($filtrarPrefijos) {
+                    if (empty($prefijosPermitidos)) {
+                        Log::info("Usuario sin prefijos permitidos, saltando rayos X ID: {$doc->id}");
+                        continue;
+                    }
+                    if (!empty($prefijoArchivo) && !in_array($prefijoArchivo, $prefijosPermitidos)) {
+                        Log::info("Rayos X con prefijo '{$prefijoArchivo}' no permitido, saltando");
+                        continue;
                     }
                 }
                 
-                if ($rutaFisica) {
+                // Buscar la ruta física
+                $rutaFisica = $this->buscarRutaFisicaDocumento($doc, 'rayosxod', $cedula);
+                
+                if ($rutaFisica && file_exists($rutaFisica)) {
                     $documentos[] = (object)[
                         'id' => $doc->id,
                         'origen' => 'rayosxod',
                         'nombre_archivo' => $nombreArchivo,
                         'descripcion' => 'RX Odontología',
                         'fecha' => $doc->fecha_rx ?? ($doc->created_at ?? ''),
-                        'tipo' => 'rx',
+                        'tipo' => $prefijoArchivo,
                         'ruta_fisica' => $rutaFisica,
                         'archivo_existe' => true,
                     ];
-                    Log::info("✅ Documento rayos X agregado: {$nombreArchivo} desde {$rutaFisica}");
+                    Log::info("✅ Rayos X AGREGADO: {$nombreArchivo}");
                 } else {
-                    Log::warning("❌ Archivo no encontrado para rayos X ID: {$doc->id}, nombre: {$nombreArchivo}");
-                    Log::warning("   Rutas probadas: " . json_encode($rutasRayos));
+                    Log::warning("❌ Archivo no encontrado: {$nombreArchivo}");
                 }
             }
             
-            // Ordenar documentos por fecha (más reciente primero)
+            // Ordenar documentos por fecha
             usort($documentos, function($a, $b) {
                 return strtotime($b->fecha) - strtotime($a->fecha);
             });
             
             $resultados[$cedula] = $documentos;
-            
             Log::info("Total documentos para cédula {$cedula}: " . count($documentos));
             
         } catch (\Exception $e) {
@@ -193,12 +240,84 @@ public function buscar(Request $request)
     }
     
     if (!$hayResultados) {
-        Log::warning("No se encontraron documentos para las cédulas ingresadas");
-        return back()->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas.');
+        Log::warning("No se encontraron documentos con los permisos actuales");
+        return back()->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas o no tienes permisos para verlos.');
     }
 
     Log::info("=== FIN BÚSQUEDA ===");
     return view('certificados_e.resultados', compact('resultados'));
+}
+
+/**
+ * Busca la ruta física de un documento según su origen
+ */
+private function buscarRutaFisicaDocumento($documento, $origen, $cedula)
+{
+    if ($origen === 'documentos_empresas') {
+        $filename = $documento->filename ?? '';
+        
+        // Intentar con ruta_archivo
+        if (!empty($documento->ruta_archivo)) {
+            $rutasPosibles = [
+                storage_path('app/public/' . str_replace('storage/', 'public/', $documento->ruta_archivo)),
+                public_path($documento->ruta_archivo),
+                public_path('storage/' . $documento->ruta_archivo),
+                storage_path('app/public/' . $documento->ruta_archivo)
+            ];
+            
+            foreach ($rutasPosibles as $ruta) {
+                if (file_exists($ruta)) {
+                    return $ruta;
+                }
+            }
+        }
+        
+        // Buscar por estructura de carpetas
+        if (!empty($cedula) && !empty($filename)) {
+            $rutasAlternativas = [
+                storage_path('app/public/RESULTADOS/' . $cedula . '/' . $filename),
+                public_path('storage/RESULTADOS/' . $cedula . '/' . $filename),
+            ];
+            
+            foreach ($rutasAlternativas as $ruta) {
+                if (file_exists($ruta)) {
+                    return $ruta;
+                }
+            }
+        }
+        
+    } elseif ($origen === 'rayosxod') {
+        $filename = $documento->nombre_archivo ?? '';
+        
+        if (!empty($cedula) && !empty($filename)) {
+            $rutasRayos = [
+                storage_path('app/public/RESULTADOS/' . $cedula . '/' . $filename),
+                public_path('storage/RESULTADOS/' . $cedula . '/' . $filename),
+            ];
+            
+            foreach ($rutasRayos as $ruta) {
+                if (file_exists($ruta)) {
+                    return $ruta;
+                }
+            }
+        }
+        
+        // Intentar con ruta en BD
+        if (!empty($documento->ruta)) {
+            $rutasBD = [
+                public_path('storage/' . $documento->ruta),
+                storage_path('app/public/' . $documento->ruta)
+            ];
+            
+            foreach ($rutasBD as $ruta) {
+                if (file_exists($ruta)) {
+                    return $ruta;
+                }
+            }
+        }
+    }
+    
+    return null;
 }
 
 
