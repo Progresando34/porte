@@ -67,6 +67,116 @@ public function buscar(Request $request)
     return view('certificados_e.resultados', compact('resultados'));
 }
 
+// Método para ver rayos X
+public function verRayos($id)
+{
+    Log::info("=== VER RAYOS X ID: {$id} ===");
+    
+    try {
+        $rayo = DB::table('rayosxod')
+            ->where('id', $id)
+            ->first();
+        
+        if (!$rayo) {
+            Log::error("Rayos X no encontrado ID: {$id}");
+            abort(404, 'Documento no encontrado');
+        }
+        
+        $cedula = $rayo->cedula;
+        $nombreArchivo = $rayo->nombre_archivo;
+        
+        Log::info("Rayos X encontrado: ID={$id}, Cédula={$cedula}, Archivo={$nombreArchivo}");
+        
+        // Construir ruta física
+        $rutaFisica = storage_path('app/public/RESULTADOS/' . $cedula . '/' . $nombreArchivo);
+        $rutaAlternativa = public_path('storage/RESULTADOS/' . $cedula . '/' . $nombreArchivo);
+        
+        $rutaUsar = null;
+        if (file_exists($rutaFisica)) {
+            $rutaUsar = $rutaFisica;
+        } elseif (file_exists($rutaAlternativa)) {
+            $rutaUsar = $rutaAlternativa;
+        }
+        
+        if (!$rutaUsar) {
+            Log::error("Archivo físico no encontrado para rayos X ID: {$id}");
+            abort(404, 'Archivo físico no encontrado');
+        }
+        
+        $tamañoArchivo = filesize($rutaUsar);
+        Log::info("Archivo físico: {$rutaUsar}, tamaño: {$tamañoArchivo} bytes");
+        
+        // Determinar el tipo MIME
+        $extension = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+        $mimeType = $extension === 'pdf' ? 'application/pdf' : 'image/jpeg';
+        
+        // Servir el archivo
+        return response()->file($rutaUsar, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . $nombreArchivo . '"',
+            'Content-Length' => $tamañoArchivo,
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0'
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error("Error en verRayos: " . $e->getMessage());
+        abort(500, 'Error al cargar el documento: ' . $e->getMessage());
+    }
+}
+
+// Método para descargar rayos X
+public function descargarRayos($id)
+{
+    Log::info("=== DESCARGAR RAYOS X ID: {$id} ===");
+    
+    try {
+        $rayo = DB::table('rayosxod')
+            ->where('id', $id)
+            ->first();
+        
+        if (!$rayo) {
+            abort(404, 'Documento no encontrado');
+        }
+        
+        $cedula = $rayo->cedula;
+        $nombreArchivo = $rayo->nombre_archivo;
+        
+        // Construir ruta física
+        $rutaFisica = storage_path('app/public/RESULTADOS/' . $cedula . '/' . $nombreArchivo);
+        $rutaAlternativa = public_path('storage/RESULTADOS/' . $cedula . '/' . $nombreArchivo);
+        
+        $rutaUsar = null;
+        if (file_exists($rutaFisica)) {
+            $rutaUsar = $rutaFisica;
+        } elseif (file_exists($rutaAlternativa)) {
+            $rutaUsar = $rutaAlternativa;
+        }
+        
+        if (!$rutaUsar) {
+            Log::error("Archivo físico no encontrado para descarga ID: {$id}");
+            abort(404, 'Archivo físico no encontrado');
+        }
+        
+        $tamañoArchivo = filesize($rutaUsar);
+        Log::info("Descargando: {$nombreArchivo}, tamaño: {$tamañoArchivo} bytes, ruta: {$rutaUsar}");
+        
+        // Descargar el archivo
+        return response()->download($rutaUsar, $nombreArchivo, [
+            'Content-Type' => 'application/octet-stream',
+            'Content-Length' => $tamañoArchivo,
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0'
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error("Error en descargarRayos: " . $e->getMessage());
+        abort(500, 'Error al descargar el documento');
+    }
+}
+
 // NUEVO método simplificado para procesar documentos
 private function procesarDocumentoSimple($doc, $origen)
 {

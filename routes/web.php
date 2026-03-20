@@ -160,6 +160,10 @@ Route::get('/debug-test', function () {
     return '✅ Esta ruta está activa';
 });
 
+// ========== RUTAS PARA RAYOS X ==========
+Route::get('/rayos/{id}/ver', [CertificadoEController::class, 'verRayos'])->name('rayos.ver');
+Route::get('/rayos/{id}/descargar', [CertificadoEController::class, 'descargarRayos'])->name('rayos.descargar');
+
 Route::get('/debug-cedula', [CertificadoEController::class, 'debugDirecto']);
 
 Route::get('/ver-rx/{id}', function ($id) {

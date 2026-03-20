@@ -637,14 +637,23 @@
                                         <td class="date-cell">{{ $archivo->fecha ?: 'Sin fecha especificada' }}</td>
 
 
-                              <td class="actions-cell">
+<td class="actions-cell">
     <div class="action-buttons">
-        <a href="{{ route('documento.ver', ['id' => $archivo->id, 'origen' => $archivo->origen]) }}" target="_blank" class="action-btn view-btn">
-            <span>👁️</span> Ver
-        </a>
-        <a href="{{ route('documento.descargar', ['id' => $archivo->id, 'origen' => $archivo->origen]) }}" class="action-btn download-btn">
-            <span>⬇</span> Descargar
-        </a>
+        @if($archivo->origen === 'rayosxod')
+            <a href="{{ route('rayos.ver', ['id' => $archivo->id]) }}" target="_blank" class="action-btn view-btn">
+                <span>👁️</span> Ver
+            </a>
+            <a href="{{ route('rayos.descargar', ['id' => $archivo->id]) }}" class="action-btn download-btn">
+                <span>⬇</span> Descargar
+            </a>
+        @else
+            <a href="{{ route('documento.ver', ['id' => $archivo->id]) }}" target="_blank" class="action-btn view-btn">
+                <span>👁️</span> Ver
+            </a>
+            <a href="{{ route('documento.descargar', ['id' => $archivo->id]) }}" class="action-btn download-btn">
+                <span>⬇</span> Descargar
+            </a>
+        @endif
     </div>
 </td>
                                         
