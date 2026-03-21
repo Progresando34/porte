@@ -59,4 +59,32 @@ public function store(Request $request)
         $registros = RayosX::latest()->get();
         return view('rayosx.index', compact('registros'));
     }
+
+    public function destroy($id)
+{
+    try {
+        // Buscar el registro
+        $registro = RayosX::findOrFail($id);
+        
+        // Guardar datos para el mensaje
+        $nombre = $registro->nombre;
+        $cedula = $registro->cedula;
+        
+        // Eliminar el archivo físico si existe
+        if ($registro->ruta && Storage::disk('public')->exists($registro->ruta)) {
+            Storage::disk('public')->delete($registro->ruta);
+        }
+        
+        // Eliminar el registro de la base de datos
+        $registro->delete();
+        
+        return redirect()->route('rayosx.index')
+            ->with('success', "Registro de {$nombre} (Cédula: {$cedula}) eliminado correctamente");
+            
+    } catch (\Exception $e) {
+        return redirect()->route('rayosx.index')
+            ->with('error', 'Error al eliminar el registro: ' . $e->getMessage());
+    }
+}
+
 }

@@ -103,6 +103,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/rayosx/create', [RayosXController::class, 'create'])->name('rayosx.create');
     Route::post('/rayosx', [RayosXController::class, 'store'])->name('rayosx.store');
 
+    // Rayos X
+Route::get('/rayosx', [RayosXController::class, 'index'])->name('rayosx.index');
+Route::get('/rayosx/create', [RayosXController::class, 'create'])->name('rayosx.create');
+Route::post('/rayosx', [RayosXController::class, 'store'])->name('rayosx.store');
+Route::delete('/rayosx/{id}', [RayosXController::class, 'destroy'])->name('rayosx.destroy'); // 👈 NUEVA RUTA
+
 });
 
 // ========== RUTAS PÚBLICAS ==========
