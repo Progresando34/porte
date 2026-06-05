@@ -1199,4 +1199,255 @@ private function interpretarCertificado($nombreArchivo)
         echo "<pre>" . $e->getTraceAsString() . "</pre>";
     }
 }
+
+/**
+ * Muestra la vista de solo visualización
+ */
+public function soloVistaIndex()
+{
+    if (!auth()->check()) {
+        return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
+    }
+    
+    $user = auth()->user();
+    
+    // Verificar que sea usuario visualizador o admin
+    $esVisualizador = $user->profile && $user->profile->name === 'visualizador';
+    
+    if (!$esVisualizador && !$user->esAdministrador()) {
+        abort(403, 'No tiene permisos para acceder a esta sección.');
+    }
+    
+    return view('certificados_e.solo_vista');
+}
+
+/**
+ * Búsqueda para solo visualización (SIN opción de descarga)
+ */
+public function soloVistaBuscar(Request $request)
+{
+    Log::info("=== BÚSQUEDA SOLO VISUALIZACIÓN ===");
+    
+    if (!auth()->check()) {
+        return redirect()->route('login')->with('error', 'Debe iniciar sesión.');
+    }
+    
+    $user = auth()->user();
+    $esVisualizador = $user->profile && $user->profile->name === 'visualizador';
+    
+    if (!$esVisualizador && !$user->esAdministrador()) {
+        abort(403, 'No tiene permisos.');
+    }
+    
+    // Obtener prefijos del usuario
+    $prefijosIds = $user->obtenerPrefijosArray();
+    $prefijosPermitidos = [];
+    
+    if (!empty($prefijosIds)) {
+        $prefijosPermitidos = \App\Models\Prefijo::whereIn('id', $prefijosIds)
+            ->where('activo', true)
+            ->pluck('prefijo')
+            ->toArray();
+    }
+    
+    $filtrarPrefijos = !$user->esAdministrador();
+    
+    // Limpiar cédulas
+    $cedulasInput = $request->input('cedulas_multiple', []);
+    $cedulaSimple = $request->input('cedula', '');
+    $cedulasABuscar = [];
+    
+    if (!empty($cedulaSimple)) {
+        $cedulaLimpia = preg_replace('/[^0-9]/', '', trim($cedulaSimple));
+        if (!empty($cedulaLimpia)) $cedulasABuscar[] = $cedulaLimpia;
+    }
+    
+    if (!empty($cedulasInput) && is_array($cedulasInput)) {
+        foreach ($cedulasInput as $cedula) {
+            if (!empty($cedula)) {
+                $cedulaLimpia = preg_replace('/[^0-9]/', '', trim($cedula));
+                if (!empty($cedulaLimpia) && !in_array($cedulaLimpia, $cedulasABuscar)) {
+                    $cedulasABuscar[] = $cedulaLimpia;
+                }
+            }
+        }
+    }
+    
+    if (empty($cedulasABuscar)) {
+        return back()->with('mensaje', 'Ingrese al menos una cédula válida');
+    }
+    
+    $resultados = [];
+    
+    foreach ($cedulasABuscar as $cedula) {
+        $documentos = [];
+        
+        // Buscar en documentos_empresas
+        $docsEmpresas = DB::table('documentos_empresas')->where('cedula', $cedula)->get();
+        foreach ($docsEmpresas as $doc) {
+            $nombreArchivo = $doc->filename ?? 'documento_' . $doc->id . '.pdf';
+            $info = $this->interpretarCertificado($nombreArchivo);
+            $prefijoArchivo = $info['prefijo'];
+            
+            if ($filtrarPrefijos && !empty($prefijosPermitidos) && !empty($prefijoArchivo)) {
+                if (!in_array($prefijoArchivo, $prefijosPermitidos)) continue;
+            }
+            
+            $rutaFisica = $this->buscarRutaFisicaDocumento($doc, 'documentos_empresas', $cedula);
+            if ($rutaFisica && file_exists($rutaFisica)) {
+                $documentos[] = (object)[
+                    'id' => $doc->id,
+                    'origen' => 'documentos_empresas',
+                    'nombre_archivo' => $nombreArchivo,
+                    'descripcion' => $info['descripcion'],
+                    'fecha' => $info['fecha'],
+                    'ruta_fisica' => $rutaFisica,
+                ];
+            }
+        }
+        
+        // Buscar en rayosxod
+        $rayosX = DB::table('rayosxod')->where('cedula', $cedula)->get();
+        foreach ($rayosX as $doc) {
+            $nombreArchivo = $doc->nombre_archivo ?? 'rx_' . $doc->id . '.jpg';
+            $info = $this->interpretarCertificado($nombreArchivo);
+            $prefijoArchivo = $info['prefijo'];
+            
+            if ($filtrarPrefijos && !empty($prefijosPermitidos) && !empty($prefijoArchivo)) {
+                if (!in_array($prefijoArchivo, $prefijosPermitidos)) continue;
+            }
+            
+            $rutaFisica = $this->buscarRutaFisicaDocumento($doc, 'rayosxod', $cedula);
+            if ($rutaFisica && file_exists($rutaFisica)) {
+                $documentos[] = (object)[
+                    'id' => $doc->id,
+                    'origen' => 'rayosxod',
+                    'nombre_archivo' => $nombreArchivo,
+                    'descripcion' => 'RX Odontología',
+                    'fecha' => $doc->fecha_rx ?? $doc->created_at ?? '',
+                    'ruta_fisica' => $rutaFisica,
+                ];
+            }
+        }
+        
+        if (!empty($documentos)) {
+            $resultados[$cedula] = $documentos;
+        }
+    }
+    
+    if (empty($resultados)) {
+        return back()->with('mensaje', 'No se encontraron documentos.');
+    }
+    
+    return view('certificados_e.solo_vista', compact('resultados'));
+}
+
+/**
+ * Ver documentos fusionados (SOLO VISUALIZACIÓN, NO DESCARGA)
+ */
+public function soloVistaVerFusionados($cedula, Request $request)
+{
+    Log::info("=== SOLO VISUALIZACIÓN - Fusionando documentos para cédula: {$cedula} ===");
+    
+    if (!auth()->check()) {
+        abort(403, 'No autenticado');
+    }
+    
+    $user = auth()->user();
+    $esVisualizador = $user->profile && $user->profile->name === 'visualizador';
+    
+    if (!$esVisualizador && !$user->esAdministrador()) {
+        abort(403, 'No tiene permisos');
+    }
+    
+    // Obtener todos los documentos de la cédula
+    $documentos = [];
+    
+    $docsEmpresas = DB::table('documentos_empresas')->where('cedula', $cedula)->get();
+    foreach ($docsEmpresas as $doc) {
+        $rutaFisica = $this->buscarRutaFisicaDocumento($doc, 'documentos_empresas', $cedula);
+        if ($rutaFisica && file_exists($rutaFisica)) {
+            $documentos[] = $rutaFisica;
+        }
+    }
+    
+    $rayosX = DB::table('rayosxod')->where('cedula', $cedula)->get();
+    foreach ($rayosX as $doc) {
+        $rutaFisica = $this->buscarRutaFisicaDocumento($doc, 'rayosxod', $cedula);
+        if ($rutaFisica && file_exists($rutaFisica)) {
+            $documentos[] = $rutaFisica;
+        }
+    }
+    
+    if (empty($documentos)) {
+        abort(404, 'No se encontraron documentos.');
+    }
+    
+    // Si es solo un documento, mostrarlo directamente
+    if (count($documentos) === 1) {
+        $mimeType = $this->obtenerMimeType(pathinfo($documentos[0], PATHINFO_BASENAME));
+        return response()->file($documentos[0], [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline',
+        ]);
+    }
+    
+    // Múltiples documentos: generar HTML con todos
+    $html = '<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Documentos Consolidados - Cédula: ' . $cedula . '</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333; }
+            .documento { margin-bottom: 40px; page-break-after: always; }
+            .documento:last-child { page-break-after: auto; }
+            .titulo { background: #3498db; color: white; padding: 10px; margin-bottom: 20px; }
+            .contenido { text-align: center; }
+            img { max-width: 100%; height: auto; border: 1px solid #ddd; }
+            .footer { text-align: center; margin-top: 50px; font-size: 12px; color: #7f8c8d; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>📄 Documentos Consolidados</h1>
+            <p>Cédula: <strong>' . $cedula . '</strong></p>
+            <p>Total de documentos: <strong>' . count($documentos) . '</strong></p>
+            <p>Fecha: ' . date('d/m/Y H:i:s') . '</p>
+            <p><strong>⚠ Modo SOLO VISUALIZACIÓN - No se permite descarga</strong></p>
+        </div>';
+    
+    foreach ($documentos as $index => $ruta) {
+        $nombreArchivo = basename($ruta);
+        $extension = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+        
+        $html .= '<div class="documento">
+            <div class="titulo">
+                <h3>Documento ' . ($index + 1) . ': ' . htmlspecialchars($nombreArchivo) . '</h3>
+            </div>
+            <div class="contenido">';
+        
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
+            $imagenData = base64_encode(file_get_contents($ruta));
+            $html .= '<img src="data:image/' . $extension . ';base64,' . $imagenData . '" alt="' . htmlspecialchars($nombreArchivo) . '">';
+        } else {
+            $html .= '<p>📄 Archivo: <strong>' . htmlspecialchars($nombreArchivo) . '</strong></p>';
+            $html .= '<p>Este archivo no se puede previsualizar en esta vista.</p>';
+        }
+        
+        $html .= '</div></div>';
+    }
+    
+    $html .= '<div class="footer">
+        <p>Documento generado automáticamente - Solo visualización</p>
+    </div>
+    </body>
+    </html>';
+    
+    return response($html)->header('Content-Type', 'text/html');
+}
+
+
+
 }

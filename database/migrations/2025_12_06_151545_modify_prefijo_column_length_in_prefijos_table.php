@@ -8,10 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('prefijos', function (Blueprint $table) {
-            // Cambiar el tamaño de 10 a 20 caracteres
-            $table->string('prefijo', 20)->unique()->change();
-        });
+Schema::table('prefijos', function (Blueprint $table) {
+    $table->string('prefijo', 20)->change();
+});
     }
 
     public function down(): void

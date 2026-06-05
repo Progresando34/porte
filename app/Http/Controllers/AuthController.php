@@ -4,8 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
-use App\Models\Trabajador;
+use App\Models\User; use App\Models\Trabajador; // ← COMENTA ESTO
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
@@ -16,131 +15,113 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    // Agrega estos métodos al final de la clase AuthController
+    // COMENTA COMPLETAMENTE ESTOS MÉTODOS
+   
+    public function showChangePasswordForm()
+    {
+        // Verificar que sea un trabajador autenticado
+        if (!session()->has('trabajador_autenticado')) {
+            return redirect()->route('login.form')->with('error', 'Debes iniciar sesión primero.');
+        }
+        
+        return view('trabajadores.actualizar-password');
+    }
 
-public function showChangePasswordForm()
-{
-    // Verificar que sea un trabajador autenticado
-    if (!session()->has('trabajador_autenticado')) {
-        return redirect()->route('login.form')->with('error', 'Debes iniciar sesión primero.');
+    public function updatePassword(Request $request)
+    {
+        // Verificar que sea un trabajador autenticado
+        if (!session()->has('trabajador_autenticado')) {
+            return redirect()->route('login.form')->with('error', 'Debes iniciar sesión primero.');
+        }
+        
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:1|confirmed',
+        ]);
+        
+        $trabajadorId = session('trabajador_id');
+        $trabajador = Trabajador::find($trabajadorId);
+        
+        if (!$trabajador) {
+            return back()->with('error', 'Trabajador no encontrado.');
+        }
+        
+        // Verificar contraseña actual
+        if (!Hash::check($request->current_password, $trabajador->password)) {
+            return back()->with('error', 'La contraseña actual es incorrecta.');
+        }
+        
+        // Actualizar contraseña
+        $trabajador->password = Hash::make($request->new_password);
+        $trabajador->save();
+        
+        Log::info('Trabajador ' . $trabajador->nombre . ' actualizó su contraseña');
+        
+        return redirect()->route('trabajador.certificados.index')
+            ->with('success', 'Contraseña actualizada correctamente.');
     }
     
-    return view('trabajadores.actualizar-password');
-}
-
-public function updatePassword(Request $request)
-{
-    // Verificar que sea un trabajador autenticado
-    if (!session()->has('trabajador_autenticado')) {
-        return redirect()->route('login.form')->with('error', 'Debes iniciar sesión primero.');
-    }
-    
-    $request->validate([
-        'current_password' => 'required|string',
-        'new_password' => 'required|string|min:1|confirmed',
-    ]);
-    
-    $trabajadorId = session('trabajador_id');
-    $trabajador = Trabajador::find($trabajadorId);
-    
-    if (!$trabajador) {
-        return back()->with('error', 'Trabajador no encontrado.');
-    }
-    
-    // Verificar contraseña actual
-    if (!Hash::check($request->current_password, $trabajador->password)) {
-        return back()->with('error', 'La contraseña actual es incorrecta.');
-    }
-    
-    // Actualizar contraseña
-    $trabajador->password = Hash::make($request->new_password);
-    $trabajador->save();
-    
-    Log::info('Trabajador ' . $trabajador->nombre . ' actualizó su contraseña');
-    
-    return redirect()->route('trabajador.certificados.index')
-        ->with('success', 'Contraseña actualizada correctamente.');
-}
 
     public function login(Request $request)
-{
-    $request->validate([
-        'login' => 'required|string',
-        'password' => 'required|string',
-    ]);
+    {
+        $request->validate([
+            'login' => 'required|string',
+            'password' => 'required|string',
+        ]);
 
-    $login = $request->input('login');
-    $password = $request->input('password');
+        $login = $request->input('login');
+        $password = $request->input('password');
 
-    Log::info('=== INTENTO DE LOGIN ===');
-    Log::info('Login: ' . $login);
-    Log::info('Password: ' . str_repeat('*', strlen($password)));
+        Log::info('=== INTENTO DE LOGIN ===');
+        Log::info('Login: ' . $login);
+        Log::info('Password: ' . str_repeat('*', strlen($password)));
 
-    // PRIMERO intentar con Usuarios normales (User)
-    $user = User::where('email', $login)
-                ->orWhere('name', $login)
-                ->first();
+        // SOLO intentar con Usuarios normales (User)
+        $user = User::where('email', $login)
+                    ->orWhere('name', $login)
+                    ->first();
 
-    if ($user) {
-        Log::info('Usuario encontrado en tabla users: ' . $user->email);
-        
-        if (Auth::attempt(['email' => $user->email, 'password' => $password])) {
-            Log::info('✅ Usuario autenticado correctamente');
-            $user = Auth::user();
-            $user->load('profile');
-            return $this->redirectByProfile($user);
-        } else {
-            Log::warning('❌ Contraseña incorrecta para usuario');
-        }
-    }
-
-    // SEGUNDO intentar con Trabajadores
-    Log::info('Buscando trabajador con usuario: ' . $login);
-    $trabajador = Trabajador::where('usuario', $login)->first();
-    
-    if ($trabajador) {
-        Log::info('Trabajador encontrado: ' . $trabajador->nombre);
-        Log::info('ID: ' . $trabajador->id);
-        Log::info('Activo: ' . ($trabajador->activo ? 'SI' : 'NO'));
-        Log::info('Password en DB: ' . $trabajador->password);
-        
-        if (!$trabajador->activo) {
-            Log::warning('Trabajador inactivo');
-            return back()->withErrors([
-                'login' => 'Su cuenta de trabajador está desactivada.',
-            ])->withInput();
-        }
-        
-        // Verificar contraseña
-        $passwordCheck = Hash::check($password, $trabajador->password);
-        Log::info('Hash::check resultado: ' . ($passwordCheck ? 'TRUE' : 'FALSE'));
-        
-   // En la parte de autenticación de trabajadores (después de validar password):
-// En la parte de autenticación de trabajadores:
-if ($passwordCheck) {
-    Log::info('✅ Contraseña válida para trabajador');
-    
-    session([
-        'trabajador_id' => $trabajador->id,
-        'trabajador_nombre' => $trabajador->nombre,
-        'trabajador_cedula' => $trabajador->cedula,
-        'trabajador_usuario' => $trabajador->usuario,
-        'trabajador_autenticado' => true
-    ]);
-    
-    // Redirigir a área de TRABAJADORES
-    return redirect()->route('trabajador.certificados.index')
-        ->with('success', '¡Bienvenido ' . $trabajador->nombre . '!');
-} else {
-            Log::warning('❌ Hash::check FALLÓ');
+        if ($user) {
+            Log::info('Usuario encontrado en tabla users: ' . $user->email);
             
-            // Verificar si es texto plano
-            if ($password === $trabajador->password) {
-                Log::info('⚠️ La contraseña está en texto plano! Actualizando...');
-                $trabajador->password = Hash::make($password);
-                $trabajador->save();
+            if (Auth::attempt(['email' => $user->email, 'password' => $password])) {
+                Log::info('✅ Usuario autenticado correctamente');
+                $user = Auth::user();
+                $user->load('profile');
+                return $this->redirectByProfile($user);
+            } else {
+                Log::warning('❌ Contraseña incorrecta para usuario');
+            }
+        } else {
+            Log::warning('❌ Usuario NO encontrado');
+        }
+
+        // COMENTA COMPLETAMENTE LA PARTE DE TRABAJADORES
+   
+        // SEGUNDO intentar con Trabajadores
+        Log::info('Buscando trabajador con usuario: ' . $login);
+        $trabajador = Trabajador::where('usuario', $login)->first();
+        
+        if ($trabajador) {
+            Log::info('Trabajador encontrado: ' . $trabajador->nombre);
+            Log::info('ID: ' . $trabajador->id);
+            Log::info('Activo: ' . ($trabajador->activo ? 'SI' : 'NO'));
+            Log::info('Password en DB: ' . $trabajador->password);
+            
+            if (!$trabajador->activo) {
+                Log::warning('Trabajador inactivo');
+                return back()->withErrors([
+                    'login' => 'Su cuenta de trabajador está desactivada.',
+                ])->withInput();
+            }
+            
+            // Verificar contraseña
+            $passwordCheck = Hash::check($password, $trabajador->password);
+            Log::info('Hash::check resultado: ' . ($passwordCheck ? 'TRUE' : 'FALSE'));
+            
+            if ($passwordCheck) {
+                Log::info('✅ Contraseña válida para trabajador');
                 
-                // Reintentar login
                 session([
                     'trabajador_id' => $trabajador->id,
                     'trabajador_nombre' => $trabajador->nombre,
@@ -149,19 +130,41 @@ if ($passwordCheck) {
                     'trabajador_autenticado' => true
                 ]);
                 
-                return redirect()->route('certificados_e.index')
+                // Redirigir a área de TRABAJADORES
+                return redirect()->route('trabajador.certificados.index')
                     ->with('success', '¡Bienvenido ' . $trabajador->nombre . '!');
+            } else {
+                Log::warning('❌ Hash::check FALLÓ');
+                
+                // Verificar si es texto plano
+                if ($password === $trabajador->password) {
+                    Log::info('⚠️ La contraseña está en texto plano! Actualizando...');
+                    $trabajador->password = Hash::make($password);
+                    $trabajador->save();
+                    
+                    // Reintentar login
+                    session([
+                        'trabajador_id' => $trabajador->id,
+                        'trabajador_nombre' => $trabajador->nombre,
+                        'trabajador_cedula' => $trabajador->cedula,
+                        'trabajador_usuario' => $trabajador->usuario,
+                        'trabajador_autenticado' => true
+                    ]);
+                    
+                    return redirect()->route('certificados_e.index')
+                        ->with('success', '¡Bienvenido ' . $trabajador->nombre . '!');
+                }
             }
+        } else {
+            Log::warning('❌ Trabajador NO encontrado');
         }
-    } else {
-        Log::warning('❌ Trabajador NO encontrado');
-    }
+       
 
-    Log::warning('❌ Login fallido completamente');
-    return back()->withErrors([
-        'login' => 'Credenciales incorrectas.',
-    ])->withInput();
-}
+        Log::warning('❌ Login fallido completamente');
+        return back()->withErrors([
+            'login' => 'Credenciales incorrectas.',
+        ])->withInput();
+    }
     
 private function redirectByProfile($user)
 {
@@ -182,15 +185,20 @@ private function redirectByProfile($user)
         case 'administrador':
             return redirect()->route('admin.dashboard');
             
+        case 'visualizador':
+            return redirect()->route('solo_vista.index');
+            
         case 'client':
         case 'cliente':
         default:
-            Log::info('✅ Redirigiendo CLIENTE a su área de consulta SIN restricciones');
-            return redirect()->route('cliente.certificados.index'); // ← CAMBIA ESTO
+            return redirect()->route('cliente.certificados.index');
     }
 }
+    
     public function logout(Request $request)
     {
+        // Comenta la parte de trabajadores
+    
         if ($request->session()->has('trabajador_autenticado')) {
             $nombre = session('trabajador_nombre');
             Log::info('Trabajador ' . $nombre . ' cerró sesión');
@@ -205,6 +213,7 @@ private function redirectByProfile($user)
         } else {
             Log::info('Usuario normal cerró sesión');
         }
+    
         
         Auth::logout();
         $request->session()->invalidate();

@@ -8,6 +8,7 @@ use App\Http\Controllers\ArmaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificadoEController;
+use App\Http\Controllers\SoloVistaController;
 use App\Http\Controllers\TrabajadorController;
 use App\Http\Middleware\AuthenticateTrabajador;
 use App\Http\Controllers\ClienteCertificadoController;
@@ -52,7 +53,7 @@ Route::prefix('cliente')->group(function () {
 });
 
 // ========== RUTAS PARA TRABAJADORES ==========
-// Usan el controlador original CON restricciones
+
 Route::prefix('trabajador')->group(function () {
     Route::get('/certificados', [CertificadoEController::class, 'indexTrabajador'])
         ->name('trabajador.certificados.index');
@@ -67,6 +68,7 @@ Route::prefix('trabajador')->group(function () {
         ->name('trabajador.actualizar-password');
 });
 
+
 // ========== RUTAS PARA DOCUMENTOS ==========
 Route::get('/documento/{id}/ver', [CertificadoEController::class, 'verDocumento'])->name('documento.ver');
 Route::get('/documento/{id}/descargar', [CertificadoEController::class, 'descargarDocumento'])->name('documento.descargar');
@@ -77,7 +79,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('usuarios', UserController::class);
     
     // CRUD completo de trabajadores
-    Route::resource('trabajadores', TrabajadorController::class);
+Route::resource('trabajadores', TrabajadorController::class);
     
     // Dashboard de administración
     Route::get('/admin/dashboard', function() {
@@ -97,7 +99,15 @@ Route::middleware('auth')->group(function () {
     // Rutas para certificados
     Route::get('/certificados/crear', [CertificadoController::class, 'create'])->name('certificados.create');
     Route::post('/certificados', [CertificadoController::class, 'store'])->name('certificados.store');
-  
+
+// ========== RUTAS PARA SOLO VISUALIZACIÓN (USUARIO ESPECIAL) ==========
+Route::prefix('solo-vista')->middleware('auth')->group(function () {
+    Route::get('/', [SoloVistaController::class, 'index'])->name('solo_vista.index');
+    Route::post('/buscar', [SoloVistaController::class, 'buscar'])->name('solo_vista.buscar');
+    Route::get('/ver-documentos/{cedula}', [SoloVistaController::class, 'verDocumentos'])->name('solo_vista.ver.documentos');
+    Route::get('/ver-pdf/{id}', [SoloVistaController::class, 'verPdf'])->name('solo_vista.ver.pdf');
+    Route::get('/ver-fusionados/{cedula}', [SoloVistaController::class, 'verFusionados'])->name('solo_vista.ver.fusionados');
+});
      // Rayos X
     Route::get('/rayosx', [RayosXController::class, 'index'])->name('rayosx.index');
     Route::get('/rayosx/create', [RayosXController::class, 'create'])->name('rayosx.create');
@@ -110,6 +120,7 @@ Route::post('/rayosx', [RayosXController::class, 'store'])->name('rayosx.store')
 Route::delete('/rayosx/{id}', [RayosXController::class, 'destroy'])->name('rayosx.destroy'); // 👈 NUEVA RUTA
 
 });
+
 
 // ========== RUTAS PÚBLICAS ==========
 Route::get('/ver-certificado/{filename}', [CertificadoController::class, 'ver'])->name('ver.certificado');
@@ -187,4 +198,62 @@ Route::get('/ver-rx/{id}', function ($id) {
     }
 
     return response()->file($path);
+});
+
+// Ruta temporal para depuración - ELIMINAR DESPUÉS
+Route::get('/debug-solo', function() {
+    // 1. Mostrar todas las rutas con 'solo' en el nombre
+    $rutas = [];
+    foreach (Route::getRoutes() as $ruta) {
+        if ($ruta->getName() && str_contains($ruta->getName(), 'solo')) {
+            $rutas[] = $ruta->getName();
+        }
+    }
+    
+    // 2. Buscar archivos que contengan 'solo.vista.index'
+    $archivosConError = [];
+    $directorios = [
+        base_path('resources/views'),
+        base_path('app/Http/Controllers'),
+        base_path('routes'),
+        base_path('app/Http/Middleware')
+    ];
+    
+    foreach ($directorios as $directorio) {
+        if (is_dir($directorio)) {
+            $archivos = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directorio));
+            foreach ($archivos as $archivo) {
+                if ($archivo->isFile() && in_array($archivo->getExtension(), ['php', 'blade.php'])) {
+                    $contenido = file_get_contents($archivo->getRealPath());
+                    if (str_contains($contenido, 'solo.vista.index')) {
+                        $archivosConError[] = str_replace(base_path(), '', $archivo->getRealPath());
+                    }
+                }
+            }
+        }
+    }
+    
+    return [
+        'rutas_disponibles' => $rutas,
+        'archivos_con_error' => $archivosConError,
+        'recomendacion' => 'Usa solo_vista.index (con guión bajo) en lugar de solo.vista.index (con punto)'
+    ];
+});
+
+Route::get('/debug-user-prefijos', function() {
+    $user = auth()->user();
+    if (!$user) {
+        return 'No hay usuario autenticado';
+    }
+    
+    $prefijos = $user->prefijos()->get();
+    
+    return [
+        'user_id' => $user->id,
+        'user_name' => $user->name,
+        'user_email' => $user->email,
+        'profile' => $user->profile ? $user->profile->name : 'sin perfil',
+        'prefijos_asignados' => $prefijos->pluck('prefijo')->toArray(),
+        'total_prefijos' => $prefijos->count()
+    ];
 });

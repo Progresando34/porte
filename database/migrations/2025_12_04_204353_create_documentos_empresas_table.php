@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('cedula', 20);        // Especifica longitud máxima
             $table->string('filename', 255);     // Nombre del archivo
-            $table->longBinary('filedata');      // Usar LONGBLOB para archivos grandes
+              $table->binary('filedata');           // ✅ Cambiado: longBinary → binary
             $table->string('filetype', 100)->nullable(); // Tipo MIME (opcional pero útil)
             $table->bigInteger('filesize')->default(0); // Tamaño en bytes
             $table->timestamps();                // created_at y updated_at

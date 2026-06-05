@@ -8,6 +8,7 @@ use App\Models\Prefijo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage; 
+use Illuminate\Support\Facades\Log; // ✅ Importante agregar esto
 
 class UserController extends Controller
 {
@@ -25,39 +26,81 @@ class UserController extends Controller
         return view('usuarios.create', compact('perfiles', 'prefijos')); // ✅ Agregar $prefijos
     }
 
-    public function store(Request $request)
+public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:6|confirmed',
-            'profile_id' => 'required|exists:profiles,id',
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'prefijos' => 'nullable|array', // ✅ Agregar esta validación
-            'prefijos.*' => 'exists:prefijos,id' // ✅ Agregar esta validación
-        ]);
+        Log::info('=== INICIO REGISTRO DE USUARIO ===');
+        Log::info('Datos recibidos:', $request->all());
+        
+        try {
+            // Validación
+            Log::info('Validando datos...');
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users',
+                'password' => 'required|string|min:6|confirmed',
+                'profile_id' => 'required|exists:profiles,id',
+                'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'prefijos' => 'nullable|array',
+                'prefijos.*' => 'exists:prefijos,id'
+            ]);
+            Log::info('✅ Validación pasada correctamente');
 
-        $avatarPath = null;
+            // Procesar avatar
+            $avatarPath = null;
+            if ($request->hasFile('avatar')) {
+                Log::info('Procesando archivo de avatar...');
+                $avatarPath = $request->file('avatar')->store('avatars', 'public');
+                Log::info('Avatar guardado en: ' . $avatarPath);
+            } else {
+                Log::info('No se recibió archivo de avatar');
+            }
 
-        if ($request->hasFile('avatar')) {
-            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+            // Crear usuario
+            Log::info('Creando usuario en BD...', [
+                'name' => $request->name,
+                'email' => $request->email,
+                'profile_id' => $request->profile_id
+            ]);
+            
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'profile_id' => $request->profile_id,
+                'avatar' => $avatarPath,
+            ]);
+            
+            Log::info('✅ Usuario creado con ID: ' . $user->id);
+
+            // Asignar prefijos
+            if ($request->has('prefijos')) {
+                $prefijosIds = $request->prefijos;
+                Log::info('Asignando prefijos al usuario: ' . json_encode($prefijosIds));
+                $user->prefijos()->sync($prefijosIds);
+                Log::info('✅ Prefijos asignados correctamente');
+            } else {
+                Log::info('No se asignaron prefijos');
+            }
+
+            Log::info('=== REGISTRO EXITOSO ===');
+            return redirect()->route('usuarios.index')
+                ->with('success', 'Usuario registrado correctamente.');
+                
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('❌ Error de validación:', $e->errors());
+            return back()->withErrors($e->errors())->withInput();
+            
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::error('❌ Error de base de datos: ' . $e->getMessage());
+            Log::error('SQL: ' . $e->getSql());
+            Log::error('Bindings: ' . json_encode($e->getBindings()));
+            return back()->with('error', 'Error en la base de datos: ' . $e->getMessage())->withInput();
+            
+        } catch (\Exception $e) {
+            Log::error('❌ Error general al registrar usuario: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return back()->with('error', 'Error inesperado: ' . $e->getMessage())->withInput();
         }
-
-        // ✅ Crear usuario y asignar prefijos
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'profile_id' => $request->profile_id,
-            'avatar' => $avatarPath,
-        ]);
-
-        // ✅ Asignar prefijos si existen
-        if ($request->has('prefijos')) {
-            $user->prefijos()->sync($request->prefijos);
-        }
-
-        return redirect()->route('usuarios.index')->with('success', 'Usuario registrado correctamente.');
     }
     
     // ✅ Agregar método edit

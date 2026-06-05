@@ -14,6 +14,7 @@ class ProfileSeeder extends Seeder
             ['name' => 'cliente'],
             ['name' => 'empleado'],
             ['name' => 'sanidad'],
+            ['name' => 'visualizador'],
         ]);
     }
 }

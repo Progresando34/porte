@@ -106,3 +106,4 @@ class TrabajadorController extends Controller
             ->with('success', 'Trabajador eliminado definitivamente.');
     }
 }
+

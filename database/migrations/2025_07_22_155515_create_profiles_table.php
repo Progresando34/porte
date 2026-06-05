@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('profiles', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // Ej: 'admin', 'cliente', 'empleado'
+            $table->string('name'); // Ej: 'admin', 'cliente', 'empleado', 'visualizador',
             $table->timestamps();
         });
     }

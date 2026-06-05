@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log; 
 
 class User extends Authenticatable
 {
@@ -32,6 +33,25 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    protected static function booted()
+{
+    static::creating(function ($user) {
+        Log::info('🔄 Intentando crear usuario: ' . $user->email);
+    });
+    
+    static::created(function ($user) {
+        Log::info('✅ Usuario creado exitosamente: ' . $user->email . ' (ID: ' . $user->id . ')');
+    });
+    
+    static::updating(function ($user) {
+        Log::info('🔄 Actualizando usuario: ' . $user->email);
+    });
+    
+    static::deleting(function ($user) {
+        Log::info('🗑️ Eliminando usuario: ' . $user->email);
+    });
+}
 
     // 🔽 Relación con el perfil
     public function profile()
