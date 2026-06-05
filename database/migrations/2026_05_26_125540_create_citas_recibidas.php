@@ -1,4 +1,3 @@
-// database/migrations/xxxx_create_citas_recibidas_table.php
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -14,14 +13,20 @@ class CreateCitasRecibidas extends Migration
             $table->string('cedula', 20);
             $table->string('nombre', 255);
             $table->date('fecha');
-            $table->text('mision');
+            $table->text('mision')->nullable();  
             $table->string('nit_empresa', 20);
             $table->string('nombre_empresa', 255);
-            $table->string('mision_empresa', 500);
+            $table->string('mision_empresa', 500)->nullable();  
             $table->json('datos_completos')->nullable();
             $table->timestamp('recibido_en')->useCurrent();
             $table->timestamps();
             
+         
+            $table->string('ruta_resultados', 500)->nullable()->after('mision_empresa');
+            $table->boolean('carpeta_copiada')->default(false)->after('ruta_resultados');
+            $table->timestamp('fecha_copia')->nullable()->after('carpeta_copiada');
+            
+       
             $table->index('cedula');
             $table->index('fecha');
             $table->index('nit_empresa');

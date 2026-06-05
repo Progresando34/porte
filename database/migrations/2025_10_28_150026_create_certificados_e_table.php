@@ -11,7 +11,7 @@ return new class extends Migration {
             $table->id();
             $table->string('cedula');
             $table->string('nombre_archivo');
-            $table->string('ruta'); // ruta dentro del storage o public
+            $table->string('ruta'); 
             $table->timestamps();
         });
     }
