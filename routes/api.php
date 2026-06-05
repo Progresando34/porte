@@ -23,7 +23,7 @@ Route::get('/sincronizar/pendientes/{nit}', [SincronizadorController::class, 'ob
 
 
 // estos enpoints son para la consulta de certificados
-
+Route::post('/sincronizar/citas/importar', [SincronizadorController::class, 'importarCitas']);
 
 Route::prefix('resultados')->group(function () {
     // Listar archivos de una cédula (reconstruidos desde base64)

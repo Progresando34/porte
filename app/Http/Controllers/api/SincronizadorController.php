@@ -116,6 +116,64 @@ class SincronizadorController extends Controller
             ], 500);
         }
     }
+
+
+    public function importarCitas(Request $request)
+{
+    try {
+        $citas = $request->input('citas', []);
+        
+        if (empty($citas)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay citas para importar'
+            ], 400);
+        }
+        
+        $insertadas = 0;
+        $errores = 0;
+        
+        foreach ($citas as $cita) {
+            try {
+                $existe = DB::table('citas')
+                    ->where('consecutivo', $cita['consecutivo'] ?? null)
+                    ->where('nit_empresa', $cita['nit_empresa'] ?? null)
+                    ->exists();
+                
+                if (!$existe) {
+                    DB::table('citas')->insert([
+                        'consecutivo' => $cita['consecutivo'] ?? null,
+                        'nit_empresa' => $cita['nit_empresa'] ?? null,
+                        'documento' => $cita['documento'] ?? null,
+                        'cliente' => $cita['cliente'] ?? null,
+                        'fecha' => $cita['fecha'] ?? null,
+                        'hora' => $cita['hora'] ?? null,
+                        'estado' => $cita['estado'] ?? null,
+                        'observaciones' => $cita['observaciones'] ?? null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $insertadas++;
+                }
+            } catch (\Exception $e) {
+                $errores++;
+                Log::error('Error insertando cita: ' . $e->getMessage());
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'insertadas' => $insertadas,
+            'errores' => $errores
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
     
     /**
      * Recibe archivos en base64 y los guarda como archivos físicos
