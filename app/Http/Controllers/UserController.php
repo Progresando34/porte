@@ -77,7 +77,7 @@ public function store(Request $request)
                 $prefijosIds = $request->prefijos;
                 Log::info('Asignando prefijos al usuario: ' . json_encode($prefijosIds));
                 $user->prefijos()->sync($prefijosIds);
-                Log::info('✅ Prefijos asignados correctamente');
+                Log::info('Prefijos asignados correctamente');
             } else {
                 Log::info('No se asignaron prefijos');
             }
@@ -87,7 +87,7 @@ public function store(Request $request)
                 ->with('success', 'Usuario registrado correctamente.');
                 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('❌ Error de validación:', $e->errors());
+            Log::error(' Error de validación:', $e->errors());
             return back()->withErrors($e->errors())->withInput();
             
         } catch (\Illuminate\Database\QueryException $e) {
