@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('descripcion')->nullable();
             $table->timestamps();
             
-            // Índices para mejorar rendimiento
+     
             $table->index('empresa_nit');
             $table->index('fecha_documento');
             $table->foreign('empresa_nit')->references('nit')->on('empresas')->onDelete('set null');
