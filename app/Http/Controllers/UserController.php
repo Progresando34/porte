@@ -70,7 +70,7 @@ public function store(Request $request)
                 'avatar' => $avatarPath,
             ]);
             
-            Log::info('✅ Usuario creado con ID: ' . $user->id);
+            Log::info(' Usuario creado con ID: ' . $user->id);
 
             // Asignar prefijos
             if ($request->has('prefijos')) {
