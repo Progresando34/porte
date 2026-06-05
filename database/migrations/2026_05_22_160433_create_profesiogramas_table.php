@@ -10,7 +10,9 @@ return new class extends Migration
     {
         Schema::create('profesiogramas', function (Blueprint $table) {
             $table->id();
-            $table->string('empresa_nit', 20)->nullable();
+
+            $table->string('empresa_nit', 50)->nullable();
+
             $table->date('fecha_documento')->nullable();
             $table->string('archivo', 255)->nullable();
             $table->string('nombre_archivo', 255)->nullable();
@@ -18,16 +20,20 @@ return new class extends Migration
             $table->string('tipo_archivo', 100)->nullable();
             $table->string('cargo', 255)->nullable();
             $table->text('descripcion')->nullable();
+
             $table->timestamps();
-            
-            // Índices
+
             $table->index('empresa_nit');
             $table->index('fecha_documento');
             $table->index('cargo');
-            $table->foreign('empresa_nit')->references('nit')->on('empresas')->onDelete('set null');
+
+            $table->foreign('empresa_nit')
+                  ->references('nit')
+                  ->on('empresas')
+                  ->onDelete('set null');
         });
     }
-    
+
     public function down()
     {
         Schema::dropIfExists('profesiogramas');
