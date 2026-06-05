@@ -128,7 +128,7 @@
             @endforeach
         </div>
         
-        <button class="btn-cerrar" onclick="window.close()">✖️ Cerrar</button>
+        <button class="btn-cerrar" onclick="window.close()">Cerrar</button>
     </div>
 </body>
 </html>
