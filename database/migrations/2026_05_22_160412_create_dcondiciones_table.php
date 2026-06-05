@@ -1,32 +1,35 @@
 <?php
 
-namespace App\Models;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-use Illuminate\Database\Eloquent\Model;
-
-class Dcondicione extends Model
+return new class extends Migration
 {
-    protected $table = 'dcondiciones';
-    
-    protected $fillable = [
-        'empresa_nit',
-        'fecha_documento',
-        'archivo',
-        'nombre_archivo',
-        'tamanio',
-        'tipo_archivo',
-        'tipo_condicion',
-        'descripcion'
-    ];
-    
-    protected $casts = [
-        'fecha_documento' => 'date',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-    ];
-    
-    public function empresa()
+    public function up()
     {
-        return $this->belongsTo(Empresa::class, 'empresa_nit', 'nit');
+        Schema::create('dcondiciones', function (Blueprint $table) {
+            $table->id();
+            $table->string('empresa_nit', 20)->nullable();
+            $table->date('fecha_documento')->nullable();
+            $table->string('archivo', 255)->nullable();
+            $table->string('nombre_archivo', 255)->nullable();
+            $table->integer('tamanio')->nullable();
+            $table->string('tipo_archivo', 100)->nullable();
+            $table->string('tipo_condicion', 100)->nullable();
+            $table->text('descripcion')->nullable();
+            $table->timestamps();
+            
+            // Índices
+            $table->index('empresa_nit');
+            $table->index('fecha_documento');
+            $table->index('tipo_condicion');
+            $table->foreign('empresa_nit')->references('nit')->on('empresas')->onDelete('set null');
+        });
     }
-}
+    
+    public function down()
+    {
+        Schema::dropIfExists('dcondiciones');
+    }
+};
