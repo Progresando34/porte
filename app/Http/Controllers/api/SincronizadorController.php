@@ -103,7 +103,7 @@ class SincronizadorController extends Controller
                 'success' => true,
                 'nit' => $nit,
                 'nombre_empresa' => $nombreEmpresa,
-                'mision_empresa' => $misionEmpresaConcatenado,  // ✅ También a nivel raíz
+                'mision_empresa' => $misionEmpresaConcatenado, 
                 'total_colaboradores' => count($resultado),
                 'citas' => $resultado
             ]);
