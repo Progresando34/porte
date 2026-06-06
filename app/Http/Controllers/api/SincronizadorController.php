@@ -174,6 +174,95 @@ class SincronizadorController extends Controller
         ], 500);
     }
 }
+
+public function importarEmpresas(Request $request)
+{
+    try {
+
+        $empresas = $request->input('empresas', []);
+
+        if (empty($empresas)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay empresas para importar'
+            ], 400);
+        }
+
+        $insertadas = 0;
+        $actualizadas = 0;
+        $errores = 0;
+
+        foreach ($empresas as $empresa) {
+
+            try {
+
+                $nit = $empresa['nit'] ?? null;
+
+                if (!$nit) {
+                    continue;
+                }
+
+                $existe = DB::table('empresas')
+                    ->where('nit', $nit)
+                    ->exists();
+
+                if (!$existe) {
+
+                    DB::table('empresas')->insert(
+                        array_merge(
+                            $empresa,
+                            [
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]
+                        )
+                    );
+
+                    $insertadas++;
+
+                } else {
+
+                    DB::table('empresas')
+                        ->where('nit', $nit)
+                        ->update(
+                            array_merge(
+                                $empresa,
+                                [
+                                    'updated_at' => now()
+                                ]
+                            )
+                        );
+
+                    $actualizadas++;
+                }
+
+            } catch (\Exception $e) {
+
+                $errores++;
+
+                Log::error(
+                    'Error importando empresa: ' .
+                    $e->getMessage()
+                );
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'insertadas' => $insertadas,
+            'actualizadas' => $actualizadas,
+            'errores' => $errores
+        ]);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+
+    }
+}
     
     /**
      * Recibe archivos en base64 y los guarda como archivos físicos
