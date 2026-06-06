@@ -615,7 +615,7 @@
                         @csrf
                         <input type="hidden" name="cedula" value="{{ $cedula }}">
                         <button type="submit" class="download-all-btn">
-                            <span>📥</span>
+                            <span></span>
                             Descargar todos los certificados
                         </button>
                     </form>

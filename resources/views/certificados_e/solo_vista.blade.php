@@ -572,7 +572,7 @@
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <a href="#" onclick="event.preventDefault(); this.closest('form').submit();">
-                    <i></i> Cerrar Sesión
+                    <i></i>Cerrar Sesión
                 </a>
             </form>
         </div>

@@ -144,7 +144,7 @@
     
     <!-- Advertencia -->
     <div class="warning-note">
-        ⚠️ <strong>Nota:</strong> Solo puedes consultar tu propia cédula: 
+         <strong>Nota:</strong> Solo puedes consultar tu propia cédula: 
         <strong>{{ session('trabajador_cedula') }}</strong>
     </div>
 
