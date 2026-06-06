@@ -93,7 +93,7 @@ class SincronizadorController extends Controller
                         'mision' => $cita->mision ?? '',
                         'nit_empresa' => $nit,
                         'nombre_empresa' => $nombreEmpresa,
-                        'mision_empresa' => $misionEmpresaConcatenado,  // ✅ Concatenado
+                        'mision_empresa' => $misionEmpresaConcatenado,  
                         'archivos' => $archivos
                     ];
                 }
