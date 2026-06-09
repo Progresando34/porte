@@ -3,7 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SincronizadorController;
 use App\Http\Controllers\Api\ResultadosController;
-use Illuminate\Http\Request;  // ← ¡AGREGA ESTA LÍNEA!
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;  // ← ¡AGREGA ESTA LÍNEA!
 
 // HEALTH CHECK
 Route::get('/health', function () {
@@ -32,7 +33,6 @@ Route::post('/debug-import', function(Request $request) {
     try {
         $data = $request->all();
         
-        // Intentar hacer una inserción simple para probar la BD
         $testInsert = DB::table('empresas')->insert([
             'nit' => '999999999',
             'nombre' => 'EMPRESA TEST',
