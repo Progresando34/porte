@@ -14,7 +14,7 @@ Route::get('/health', function () {
 Route::post('/importar-citas', function(Request $request) {
     $citas = $request->input('citas', []);
     $insertadas = 0;
-    $errores = [];
+    $errores_lista = [];
     
     foreach ($citas as $index => $cita) {
         try {
@@ -28,17 +28,16 @@ Route::post('/importar-citas', function(Request $request) {
             ]);
             $insertadas++;
         } catch (\Exception $e) {
-            $errores[] = "Cita $index: " . $e->getMessage();
+            $errores_lista[] = "Cita $index: " . $e->getMessage();
         }
     }
     
     return response()->json([
         'insertadas' => $insertadas,
-        'total' => count($citas),
-        'errores' => $errores
+        'errores' => $errores_lista,
+        'total' => count($citas)
     ]);
 });
-
 
 Route::post('/sincronizar/archivos', [SincronizadorController::class, 'recibirArchivos']);
 Route::get('/sincronizar/pendientes/{nit}', [SincronizadorController::class, 'obtenerPendientes']);
