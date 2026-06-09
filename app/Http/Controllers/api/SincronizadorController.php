@@ -237,12 +237,13 @@ public function importarEmpresas(Request $request)
 
             } catch (\Exception $e) {
 
-                return response()->json([
-                    'success' => false,
+                dd([
                     'nit' => $nit,
                     'error' => $e->getMessage(),
+                    'archivo' => $e->getFile(),
+                    'linea' => $e->getLine(),
                     'empresa' => $empresa
-                ], 500);
+                ]);
 
             }
         }
@@ -255,10 +256,11 @@ public function importarEmpresas(Request $request)
 
     } catch (\Exception $e) {
 
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
+        dd([
+            'error' => $e->getMessage(),
+            'archivo' => $e->getFile(),
+            'linea' => $e->getLine()
+        ]);
 
     }
 }
