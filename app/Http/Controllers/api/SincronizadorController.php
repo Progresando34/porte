@@ -7,6 +7,7 @@ use App\Models\CitaRecibida;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;  // ← AGREGA ESTA LÍNEA
 
 class SincronizadorController extends Controller
 {
