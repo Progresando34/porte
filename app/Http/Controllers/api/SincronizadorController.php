@@ -177,6 +177,7 @@ class SincronizadorController extends Controller
 
 public function importarEmpresas(Request $request)
 {
+        dd('ENTRO A IMPORTAR EMPRESAS');
     try {
 
         $empresas = $request->input('empresas', []);
