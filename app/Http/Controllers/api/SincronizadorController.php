@@ -190,7 +190,6 @@ public function importarEmpresas(Request $request)
 
         $insertadas = 0;
         $actualizadas = 0;
-        $errores = 0;
 
         foreach ($empresas as $empresa) {
 
@@ -238,20 +237,20 @@ public function importarEmpresas(Request $request)
 
             } catch (\Exception $e) {
 
-                $errores++;
+                return response()->json([
+                    'success' => false,
+                    'nit' => $nit,
+                    'error' => $e->getMessage(),
+                    'empresa' => $empresa
+                ], 500);
 
-                Log::error(
-                    'Error importando empresa: ' .
-                    $e->getMessage()
-                );
             }
         }
 
         return response()->json([
             'success' => true,
             'insertadas' => $insertadas,
-            'actualizadas' => $actualizadas,
-            'errores' => $errores
+            'actualizadas' => $actualizadas
         ]);
 
     } catch (\Exception $e) {
