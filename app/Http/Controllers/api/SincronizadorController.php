@@ -211,7 +211,7 @@ public function importarEmpresas(Request $request)
                 $identificador = null;
                 $campo = null;
                 
-                // Priorizar CODIGO si existe (aunque sea '1')
+             
                 if ($codigo !== null && $codigo !== '') {
                     $identificador = $codigo;
                     $campo = 'codigo';
