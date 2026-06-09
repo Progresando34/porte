@@ -123,7 +123,7 @@ public function importarCitas(Request $request)
         
         foreach ($citas as $cita) {
             try {
-                // Insertar directamente en la tabla citas_recibidas
+                
                 DB::table('citas_recibidas')->insert([
                     'cedula' => $cita['cedula'] ?? null,
                     'nombre' => $cita['nombre'] ?? null,
