@@ -27,14 +27,14 @@ public function handle()
     $this->info("📌 MODO: $modo");
 
     // Procesar según opciones
-    if ($this->option('solo-empresas')) {
-        $this->importarTabla('empresa.dbf', 'empresas');
-    } elseif ($this->option('solo-citas')) {
-        $this->importarTabla('cita.dbf', 'citas');
-    } else {
-        $this->importarTabla('empresa.dbf', 'empresas');
-        $this->importarTabla('cita.dbf', 'citas');
-    }
+if ($this->option('solo-empresas')) {
+    $this->importarTabla('empresa.dbf', 'empresas');
+} elseif ($this->option('solo-citas')) {
+    $this->importarTabla('cita.dbf', 'citas_recibidas');  // ← Cambiado a citas_recibidas
+} else {
+    $this->importarTabla('empresa.dbf', 'empresas');
+    $this->importarTabla('cita.dbf', 'citas_recibidas');  // ← Cambiado a citas_recibidas
+}
 
     $this->info('✅ PROCESO COMPLETO');
 }
