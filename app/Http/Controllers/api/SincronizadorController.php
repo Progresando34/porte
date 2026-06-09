@@ -273,119 +273,99 @@ public function importarEmpresas(Request $request)
     }
 }
 
-    public function recibirArchivos(Request $request)
-    {
-        //verifico
-        try {
-            $archivos = $request->input('archivos');
-            
-            if (empty($archivos)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se recibieron archivos'
-                ], 400);
-            }
-            
-            DB::beginTransaction();
-            
-            $guardados = 0;
-            $existentes = 0;
-            $errores = 0;
-            
-            $porCedula = [];
-            foreach ($archivos as $archivoData) {
-                $cedula = $archivoData['cedula'];
-                if (!isset($porCedula[$cedula])) {
-                    $porCedula[$cedula] = [
-                        'cita' => $archivoData,
-                        'archivos' => []
-                    ];
-                }
-                $porCedula[$cedula]['archivos'][] = $archivoData;
-            }
-            
-            foreach ($porCedula as $cedula => $data) {
-                $primerArchivo = $data['cita'];
-                
-                $cita = CitaRecibida::firstOrCreate(
-                    [
-                        'cedula' => $cedula,
-                        'fecha' => $primerArchivo['fecha_cita']
-                    ],
-                    [
-                        'nombre' => $primerArchivo['nombre'],
-                        'mision' => $primerArchivo['mision'] ?? '',
-                        'nit_empresa' => $primerArchivo['nit_empresa'],
-                        'nombre_empresa' => $primerArchivo['nombre_empresa'] ?? '',
-                        'mision_empresa' => $primerArchivo['mision_empresa'] ?? ''
-                    ]
-                );
-                
-                if ($cita->carpeta_copiada) {
-                    $existentes += count($data['archivos']);
-                    continue;
-                }
-                
-                $rutaDestino = storage_path('app/public/RESULTADOS/' . $cedula);
-                if (!is_dir($rutaDestino)) {
-                    mkdir($rutaDestino, 0777, true);
-                }
-                
-                $archivosGuardados = 0;
-                foreach ($data['archivos'] as $archivoData) {
-                    $nombreArchivo = $archivoData['nombre_archivo'];
-                    $rutaArchivo = $rutaDestino . '/' . $nombreArchivo;
-                    
-                    if (file_exists($rutaArchivo)) {
-                        continue;
-                    }
-                    
-                    $contenidoBase64 = $archivoData['contenido_base64'];
-                    $contenidoBinario = base64_decode($contenidoBase64);
-                    
-                    if ($contenidoBinario === false) {
-                        $errores++;
-                        continue;
-                    }
-                    
-                    $bytesEscritos = file_put_contents($rutaArchivo, $contenidoBinario);
-                    
-                    if ($bytesEscritos === false) {
-                        $errores++;
-                        continue;
-                    }
-                    
-                    $archivosGuardados++;
-                    $guardados++;
-                }
-                
-                if ($archivosGuardados > 0) {
-                    $cita->update([
-                        'ruta_resultados' => 'storage/RESULTADOS/' . $cedula,
-                        'carpeta_copiada' => true,
-                        'fecha_copia' => now()
-                    ]);
-                }
-            }
-            
-            DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => "Archivos procesados: {$guardados} nuevos, {$existentes} existentes, {$errores} errores",
-                'archivos_guardados' => $guardados,
-                'archivos_existentes' => $existentes,
-                'errores' => $errores
-            ]);
-            
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error en recibirArchivos: ' . $e->getMessage());
-            
+public function recibirArchivos(Request $request)
+{
+    try {
+        $archivos = $request->input('archivos', []);
+        
+        if (empty($archivos)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al procesar archivos: ' . $e->getMessage()
-            ], 500);
+                'message' => 'No se recibieron archivos'
+            ], 400);
         }
+        
+        DB::beginTransaction();
+        
+        $citasGuardadas = 0;
+        $citasOmitidas = 0;
+        $errores = 0;
+        
+        // Fecha de corte para filtrar citas
+        $fechaCorte = '2026-05-14';
+        
+        // Agrupar por cédula para evitar duplicados
+        $citasUnicas = [];
+        foreach ($archivos as $archivoData) {
+            $cedula = $archivoData['cedula'];
+            if (!isset($citasUnicas[$cedula])) {
+                $citasUnicas[$cedula] = $archivoData;
+            }
+        }
+        
+        foreach ($citasUnicas as $cedula => $citaData) {
+            try {
+                $fechaCita = $citaData['fecha_cita'] ?? null;
+                
+                // VERIFICAR CONDICIÓN: Solo citas con fecha >= fechaCorte Y cédula no esté vacía
+                if ($fechaCita && $fechaCita >= $fechaCorte && $cedula && $cedula !== '') {
+                    
+                    // Verificar si ya existe para evitar duplicados
+                    $existe = CitaRecibida::where('cedula', $cedula)
+                        ->where('fecha', $fechaCita)
+                        ->exists();
+                    
+                    if (!$existe) {
+                        // Crear la cita en la tabla citas_recibidas
+                        $cita = CitaRecibida::create([
+                            'cedula' => $cedula,
+                            'fecha' => $fechaCita,
+                            'nombre' => $citaData['nombre'] ?? '',
+                            'mision' => $citaData['mision'] ?? '',
+                            'nit_empresa' => $citaData['nit_empresa'] ?? '',
+                            'nombre_empresa' => $citaData['nombre_empresa'] ?? '',
+                            'mision_empresa' => $citaData['mision_empresa'] ?? '',
+                            'carpeta_copiada' => false,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                        
+                        $citasGuardadas++;
+                        Log::info("Cita guardada: {$cedula} - {$fechaCita}");
+                    } else {
+                        $citasOmitidas++;
+                        Log::info("Cita ya existe, omitida: {$cedula} - {$fechaCita}");
+                    }
+                } else {
+                    $citasOmitidas++;
+                    Log::info("Cita omitida por condición: {$cedula} - {$fechaCita}");
+                }
+                
+            } catch (\Exception $e) {
+                $errores++;
+                Log::error("Error guardando cita {$cedula}: " . $e->getMessage());
+            }
+        }
+        
+        DB::commit();
+        
+        return response()->json([
+            'success' => true,
+            'message' => "Citas guardadas: {$citasGuardadas}, Omitidas: {$citasOmitidas}, Errores: {$errores}",
+            'citas_guardadas' => $citasGuardadas,
+            'citas_omitidas' => $citasOmitidas,
+            'errores' => $errores,
+            'total_recibidas' => count($citasUnicas)
+        ]);
+        
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error en recibirArchivos: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al procesar citas: ' . $e->getMessage()
+        ], 500);
     }
+}
 }
