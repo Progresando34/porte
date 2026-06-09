@@ -5,13 +5,30 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SincronizadorController;
 use App\Http\Controllers\Api\ResultadosController;
-use Illuminate\Http\Request;
 
 // HEALTH CHECK
 Route::get('/health', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()]);
 });
 
+
+// RUTA DE PRUEBA - COLOCADA ANTES DE LOS GRUPOS
+Route::post('/sincronizar/empresas/test-simple', function(Request $request) {
+    try {
+        $data = $request->all();
+        return response()->json([
+            'success' => true,
+            'message' => 'Endpoint funciona',
+            'keys' => array_keys($data),
+            'count' => count($data['empresas'] ?? [])
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
 
 // mis endpoints para el script del sincro
 
@@ -37,22 +54,4 @@ Route::prefix('resultados')->group(function () {
     
     // Verificar si existe información
     Route::get('/verificar/{cedula}', [ResultadosController::class, 'verificar']);
-
-
-    Route::post('/sincronizar/empresas/test-simple', function(Request $request) {
-    try {
-        $data = $request->all();
-        return response()->json([
-            'success' => true,
-            'message' => 'Endpoint funciona',
-            'keys' => array_keys($data),
-            'count' => count($data['empresas'] ?? [])
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage()
-        ], 500);
-    }
-});
 });
