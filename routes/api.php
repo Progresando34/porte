@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SincronizadorController;
 use App\Http\Controllers\Api\ResultadosController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;  // ← ¡AGREGA ESTA LÍNEA!
+use Illuminate\Support\Facades\DB;  
 
 // HEALTH CHECK
 Route::get('/health', function () {
