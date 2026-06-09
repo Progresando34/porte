@@ -3,13 +3,15 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 // HEALTH CHECK
 Route::get('/health', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()]);
 });
 
-// ENDPOINT PARA IMPORTAR EMPRESAS - FUNCIONA DIRECTAMENTE
+// ENDPOINT PARA IMPORTAR EMPRESAS - CON CREACIÓN AUTOMÁTICA DE COLUMNAS
 Route::post('/sincronizar/empresas/importar', function(Request $request) {
     try {
         $empresas = $request->input('empresas', []);
@@ -24,25 +26,47 @@ Route::post('/sincronizar/empresas/importar', function(Request $request) {
         $insertadas = 0;
         $actualizadas = 0;
         $errores = 0;
-        $detalles = [];
 
         foreach ($empresas as $index => $empresa) {
             try {
-                // Obtener identificadores
-                $nit = $empresa['nit'] ?? null;
-                $codigo = $empresa['codigo'] ?? null;
-                
-                // Limpiar valores (convertir bytes a string si es necesario)
-                if (is_numeric($nit)) {
-                    $nit = (string)$nit;
+                // Limpiar datos
+                $datos = [];
+                foreach ($empresa as $key => $value) {
+                    $columnaLimpia = strtolower(trim($key));
+                    $columnaLimpia = preg_replace('/[^a-z0-9_]/', '_', $columnaLimpia);
+                    $columnaLimpia = preg_replace('/_+/', '_', $columnaLimpia);
+                    $columnaLimpia = trim($columnaLimpia, '_');
+                    
+                    if (empty($columnaLimpia) || is_numeric($columnaLimpia[0])) {
+                        $columnaLimpia = 'col_' . $columnaLimpia;
+                    }
+                    $columnaLimpia = substr($columnaLimpia, 0, 64);
+                    
+                    // Crear columna si no existe
+                    if (!Schema::hasColumn('empresas', $columnaLimpia)) {
+                        try {
+                            Schema::table('empresas', function (Blueprint $table) use ($columnaLimpia) {
+                                $table->text($columnaLimpia)->nullable();
+                            });
+                        } catch (\Exception $e) {
+                            // La columna ya existe o hubo error
+                        }
+                    }
+                    
+                    // Limpiar valor
+                    if ($value === '' || $value === null) {
+                        $datos[$columnaLimpia] = null;
+                    } elseif (is_numeric($value)) {
+                        $datos[$columnaLimpia] = (string)$value;
+                    } else {
+                        $datos[$columnaLimpia] = $value;
+                    }
                 }
-                if (is_numeric($codigo)) {
-                    $codigo = (string)$codigo;
-                }
                 
-                // Decidir qué identificador usar
-                // Si NIT es válido (no es 1, no está vacío), usarlo
-                // Si no, usar CODIGO
+                // Obtener identificador (usar codigo o nit)
+                $codigo = $datos['codigo'] ?? null;
+                $nit = $datos['nit'] ?? null;
+                
                 $identificador = null;
                 $campoIdentificador = null;
                 
@@ -56,61 +80,41 @@ Route::post('/sincronizar/empresas/importar', function(Request $request) {
                 
                 if (!$identificador) {
                     $errores++;
-                    $detalles[] = "Índice {$index}: Sin identificador válido (nit: {$nit}, codigo: {$codigo})";
                     continue;
                 }
                 
-                // Limpiar datos
-                $datos = [];
-                foreach ($empresa as $key => $value) {
-                    if ($value === '' || $value === null) {
-                        $datos[$key] = null;
-                    } elseif (is_numeric($value)) {
-                        // Convertir números a string para evitar problemas
-                        $datos[$key] = (string)$value;
-                    } else {
-                        $datos[$key] = $value;
-                    }
-                }
-                
-                // Verificar si existe usando el identificador correspondiente
+                // Verificar si existe
                 $existe = DB::table('empresas')->where($campoIdentificador, $identificador)->exists();
 
+                // Agregar timestamps
+                $datos['updated_at'] = now();
+                
                 if (!$existe) {
-                    DB::table('empresas')->insert(array_merge(
-                        $datos,
-                        ['created_at' => now(), 'updated_at' => now()]
-                    ));
+                    $datos['created_at'] = now();
+                    DB::table('empresas')->insert($datos);
                     $insertadas++;
                 } else {
                     DB::table('empresas')
                         ->where($campoIdentificador, $identificador)
-                        ->update(array_merge(
-                            $datos,
-                            ['updated_at' => now()]
-                        ));
+                        ->update($datos);
                     $actualizadas++;
                 }
                 
             } catch (\Exception $e) {
                 $errores++;
-                $detalles[] = "Índice {$index}: " . $e->getMessage();
+                if ($errores <= 5) {
+                    \Log::error("Error en empresa {$index}: " . $e->getMessage());
+                }
             }
         }
         
-        $respuesta = [
+        return response()->json([
             'success' => true,
             'insertadas' => $insertadas,
             'actualizadas' => $actualizadas,
             'errores' => $errores,
             'total_recibidas' => count($empresas)
-        ];
-        
-        if (count($detalles) > 0 && $errores > 0) {
-            $respuesta['detalles'] = array_slice($detalles, 0, 10); // Solo primeros 10 errores
-        }
-        
-        return response()->json($respuesta);
+        ]);
         
     } catch (\Exception $e) {
         return response()->json([
