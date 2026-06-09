@@ -14,27 +14,33 @@ Route::get('/health', function () {
 Route::post('/importar-citas', function(Request $request) {
     $citas = $request->input('citas', []);
     $insertadas = 0;
-    $errores_lista = [];
+    $errores = [];
     
     foreach ($citas as $index => $cita) {
         try {
-            DB::table('citas_recibidas')->insert([
-                'cedula' => $cita['cedula'],
-                'nombre' => $cita['nombre'],
-                'fecha' => $cita['fecha'],
-                'nit_empresa' => $cita['empresa'],
+            // Intentar insertar con los datos que lleguen
+            $resultado = DB::table('citas_recibidas')->insert([
+                'cedula' => $cita['cedula'] ?? null,
+                'nombre' => $cita['nombre'] ?? null,
+                'fecha' => $cita['fecha'] ?? null,
+                'nit_empresa' => $cita['empresa'] ?? null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            $insertadas++;
+            
+            if ($resultado) {
+                $insertadas++;
+            } else {
+                $errores[] = "Cita $index: Falló la inserción sin excepción";
+            }
         } catch (\Exception $e) {
-            $errores_lista[] = "Cita $index: " . $e->getMessage();
+            $errores[] = "Cita $index: " . $e->getMessage();
         }
     }
     
     return response()->json([
         'insertadas' => $insertadas,
-        'errores' => $errores_lista,
+        'errores' => $errores,
         'total' => count($citas)
     ]);
 });
