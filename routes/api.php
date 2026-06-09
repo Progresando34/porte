@@ -28,6 +28,35 @@ Route::post('/sincronizar/empresas/test-simple', function(Request $request) {
     }
 });
 
+Route::post('/debug-import', function(Request $request) {
+    try {
+        $data = $request->all();
+        
+        // Intentar hacer una inserción simple para probar la BD
+        $testInsert = DB::table('empresas')->insert([
+            'nit' => '999999999',
+            'nombre' => 'EMPRESA TEST',
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'received_keys' => array_keys($data),
+            'empresas_count' => count($data['empresas'] ?? []),
+            'first_empresa' => ($data['empresas'][0] ?? null),
+            'test_insert' => $testInsert ? 'OK' : 'FAIL'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ], 500);
+    }
+});
+
 // mis endpoints para el script del sincro
 Route::post('/sincronizar/archivos', [SincronizadorController::class, 'recibirArchivos']);
 Route::get('/sincronizar/pendientes/{nit}', [SincronizadorController::class, 'obtenerPendientes']);
