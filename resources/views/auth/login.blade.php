@@ -286,7 +286,7 @@ ingrese sus credenciales para continuar</h1>
 
         <div class="mt-3 text-center">
           <small class="text-muted">
-            Si tienes problemas para ingresar, contacta al administrador
+   
           </small>
         </div>
       </div>
