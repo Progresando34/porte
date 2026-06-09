@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\SincronizadorController;
-use App\Http\Controllers\Api\ResultadosController;
+use App\Http\Controllers\api\SincronizadorController;
+use App\Http\Controllers\api\ResultadosController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;  
 
