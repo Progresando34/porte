@@ -24,26 +24,57 @@ Route::post('/sincronizar/empresas/importar', function(Request $request) {
         $insertadas = 0;
         $actualizadas = 0;
         $errores = 0;
+        $detalles = [];
 
-        foreach ($empresas as $empresa) {
+        foreach ($empresas as $index => $empresa) {
             try {
+                // Obtener identificadores
                 $nit = $empresa['nit'] ?? null;
+                $codigo = $empresa['codigo'] ?? null;
                 
-                if (!$nit) {
+                // Limpiar valores (convertir bytes a string si es necesario)
+                if (is_numeric($nit)) {
+                    $nit = (string)$nit;
+                }
+                if (is_numeric($codigo)) {
+                    $codigo = (string)$codigo;
+                }
+                
+                // Decidir qué identificador usar
+                // Si NIT es válido (no es 1, no está vacío), usarlo
+                // Si no, usar CODIGO
+                $identificador = null;
+                $campoIdentificador = null;
+                
+                if ($nit && $nit !== '1' && $nit !== '') {
+                    $identificador = $nit;
+                    $campoIdentificador = 'nit';
+                } elseif ($codigo && $codigo !== '1' && $codigo !== '') {
+                    $identificador = $codigo;
+                    $campoIdentificador = 'codigo';
+                }
+                
+                if (!$identificador) {
                     $errores++;
+                    $detalles[] = "Índice {$index}: Sin identificador válido (nit: {$nit}, codigo: {$codigo})";
                     continue;
                 }
                 
-                $existe = DB::table('empresas')->where('nit', $nit)->exists();
-
+                // Limpiar datos
                 $datos = [];
                 foreach ($empresa as $key => $value) {
                     if ($value === '' || $value === null) {
                         $datos[$key] = null;
+                    } elseif (is_numeric($value)) {
+                        // Convertir números a string para evitar problemas
+                        $datos[$key] = (string)$value;
                     } else {
                         $datos[$key] = $value;
                     }
                 }
+                
+                // Verificar si existe usando el identificador correspondiente
+                $existe = DB::table('empresas')->where($campoIdentificador, $identificador)->exists();
 
                 if (!$existe) {
                     DB::table('empresas')->insert(array_merge(
@@ -53,7 +84,7 @@ Route::post('/sincronizar/empresas/importar', function(Request $request) {
                     $insertadas++;
                 } else {
                     DB::table('empresas')
-                        ->where('nit', $nit)
+                        ->where($campoIdentificador, $identificador)
                         ->update(array_merge(
                             $datos,
                             ['updated_at' => now()]
@@ -63,16 +94,23 @@ Route::post('/sincronizar/empresas/importar', function(Request $request) {
                 
             } catch (\Exception $e) {
                 $errores++;
+                $detalles[] = "Índice {$index}: " . $e->getMessage();
             }
         }
         
-        return response()->json([
+        $respuesta = [
             'success' => true,
             'insertadas' => $insertadas,
             'actualizadas' => $actualizadas,
             'errores' => $errores,
             'total_recibidas' => count($empresas)
-        ]);
+        ];
+        
+        if (count($detalles) > 0 && $errores > 0) {
+            $respuesta['detalles'] = array_slice($detalles, 0, 10); // Solo primeros 10 errores
+        }
+        
+        return response()->json($respuesta);
         
     } catch (\Exception $e) {
         return response()->json([
