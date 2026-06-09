@@ -120,43 +120,28 @@ public function importarCitas(Request $request)
         
         $insertadas = 0;
         $errores = 0;
-        $errores_detalle = [];
         
-        foreach ($citas as $index => $cita) {
+        foreach ($citas as $cita) {
             try {
-                // Crear un consecutivo único
-                $consecutivo = $cita['consecutivo'] ?? ('CITA_' . uniqid());
-                
-                $datos = [
-                    'consecutivo' => $consecutivo,
-                    'nit_empresa' => $cita['empresa'] ?? null,
-                    'documento' => $cita['cedula'] ?? null,
-                    'cliente' => $cita['nombre'] ?? null,
+                // Insertar directamente en la tabla citas_recibidas
+                DB::table('citas_recibidas')->insert([
+                    'cedula' => $cita['cedula'] ?? null,
+                    'nombre' => $cita['nombre'] ?? null,
                     'fecha' => $cita['fecha'] ?? null,
-                    'hora' => $cita['hora'] ?? null,
-                    'estado' => 'PENDIENTE',
-                    'observaciones' => $cita['observaciones'] ?? null,
+                    'mision' => $cita['mision'] ?? null,
+                    'nit_empresa' => $cita['empresa'] ?? null,  // Campo 'empresa' del DBF
+                    'nombre_empresa' => $cita['nombre_empresa'] ?? null,
+                    'mision_empresa' => $cita['mision_empresa'] ?? null,
+                    'datos_completos' => json_encode($cita),
+                    'recibido_en' => now(),
                     'created_at' => now(),
                     'updated_at' => now(),
-                ];
-                
-                // Verificar si ya existe
-                $existe = DB::table('citas')
-                    ->where('nit_empresa', $datos['nit_empresa'])
-                    ->where('documento', $datos['documento'])
-                    ->exists();
-                
-                if (!$existe && $datos['nit_empresa'] && $datos['documento']) {
-                    DB::table('citas')->insert($datos);
-                    $insertadas++;
-                } else {
-                    $errores++;
-                    $errores_detalle[] = "Cita {$index}: ya existe o datos incompletos (NIT: {$datos['nit_empresa']}, DOC: {$datos['documento']})";
-                }
+                ]);
+                $insertadas++;
                 
             } catch (\Exception $e) {
                 $errores++;
-                $errores_detalle[] = "Error en cita {$index}: " . $e->getMessage();
+                Log::error("Error insertando cita: " . $e->getMessage());
             }
         }
         
@@ -164,8 +149,7 @@ public function importarCitas(Request $request)
             'success' => true,
             'insertadas' => $insertadas,
             'errores' => $errores,
-            'total_recibidas' => count($citas),
-            'detalles' => array_slice($errores_detalle, 0, 20)
+            'total_recibidas' => count($citas)
         ]);
         
     } catch (\Exception $e) {
@@ -175,6 +159,7 @@ public function importarCitas(Request $request)
         ], 500);
     }
 }
+
 
 public function importarEmpresas(Request $request)
 {
