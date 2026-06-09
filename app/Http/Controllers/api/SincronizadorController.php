@@ -177,10 +177,16 @@ class SincronizadorController extends Controller
 
 public function importarEmpresas(Request $request)
 {
-        dd('ENTRO A IMPORTAR EMPRESAS');
+    // Forzar respuesta JSON incluso en error
+    request()->headers->set('Accept', 'application/json');
+    
     try {
-
+        // Log para depuración
+        Log::info('=== INICIO importarEmpresas ===');
+        
         $empresas = $request->input('empresas', []);
+        
+        Log::info('Cantidad de empresas recibidas: ' . count($empresas));
 
         if (empty($empresas)) {
             return response()->json([
@@ -191,78 +197,79 @@ public function importarEmpresas(Request $request)
 
         $insertadas = 0;
         $actualizadas = 0;
+        $errores = 0;
 
-        foreach ($empresas as $empresa) {
-
+        foreach ($empresas as $index => $empresa) {
             try {
-
                 $nit = $empresa['nit'] ?? null;
-
+                
                 if (!$nit) {
+                    Log::warning("Empresa sin NIT en índice {$index}");
+                    $errores++;
                     continue;
                 }
-
-                $existe = DB::table('empresas')
-                    ->where('nit', $nit)
-                    ->exists();
+                
+                // Limpiar datos: convertir valores vacíos a null
+                $datosLimpios = [];
+                foreach ($empresa as $key => $value) {
+                    // Si el valor es string vacío, convertirlo a null
+                    if ($value === '' || $value === null) {
+                        $datosLimpios[$key] = null;
+                    } else {
+                        $datosLimpios[$key] = $value;
+                    }
+                }
+                
+                // Verificar si la empresa existe
+                $existe = DB::table('empresas')->where('nit', $nit)->exists();
 
                 if (!$existe) {
-
-                    DB::table('empresas')->insert(
-                        array_merge(
-                            $empresa,
-                            [
-                                'created_at' => now(),
-                                'updated_at' => now()
-                            ]
-                        )
-                    );
-
+                    // Insertar nueva empresa
+                    DB::table('empresas')->insert(array_merge(
+                        $datosLimpios,
+                        [
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]
+                    ));
                     $insertadas++;
-
+                    Log::info("✅ Empresa INSERTADA: {$nit}");
                 } else {
-
+                    // Actualizar empresa existente
                     DB::table('empresas')
                         ->where('nit', $nit)
-                        ->update(
-                            array_merge(
-                                $empresa,
-                                [
-                                    'updated_at' => now()
-                                ]
-                            )
-                        );
-
+                        ->update(array_merge(
+                            $datosLimpios,
+                            ['updated_at' => now()]
+                        ));
                     $actualizadas++;
+                    Log::info("🔄 Empresa ACTUALIZADA: {$nit}");
                 }
-
+                
             } catch (\Exception $e) {
-
-                dd([
-                    'nit' => $nit,
-                    'error' => $e->getMessage(),
-                    'archivo' => $e->getFile(),
-                    'linea' => $e->getLine(),
-                    'empresa' => $empresa
-                ]);
-
+                $errores++;
+                Log::error("❌ Error en empresa índice {$index}: " . $e->getMessage());
+                // Continuar con la siguiente empresa
             }
         }
 
+        Log::info("=== FIN importarEmpresas: Insertadas={$insertadas}, Actualizadas={$actualizadas}, Errores={$errores} ===");
+        
         return response()->json([
             'success' => true,
             'insertadas' => $insertadas,
-            'actualizadas' => $actualizadas
+            'actualizadas' => $actualizadas,
+            'errores' => $errores,
+            'total_recibidas' => count($empresas)
         ]);
-
+        
     } catch (\Exception $e) {
-
-        dd([
-            'error' => $e->getMessage(),
-            'archivo' => $e->getFile(),
-            'linea' => $e->getLine()
-        ]);
-
+        Log::error('ERROR GENERAL en importarEmpresas: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error en el servidor: ' . $e->getMessage()
+        ], 500);
     }
 }
     
