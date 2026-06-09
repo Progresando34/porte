@@ -14,8 +14,9 @@ Route::get('/health', function () {
 Route::post('/importar-citas', function(Request $request) {
     $citas = $request->input('citas', []);
     $insertadas = 0;
+    $errores = [];
     
-    foreach ($citas as $cita) {
+    foreach ($citas as $index => $cita) {
         try {
             DB::table('citas_recibidas')->insert([
                 'cedula' => $cita['cedula'],
@@ -27,11 +28,15 @@ Route::post('/importar-citas', function(Request $request) {
             ]);
             $insertadas++;
         } catch (\Exception $e) {
-            // Error silencioso
+            $errores[] = "Cita $index: " . $e->getMessage();
         }
     }
     
-    return response()->json(['insertadas' => $insertadas]);
+    return response()->json([
+        'insertadas' => $insertadas,
+        'total' => count($citas),
+        'errores' => $errores
+    ]);
 });
 
 // ENDPOINTS DEL SINCRONIZADOR - USANDO EL CONTROLADOR
