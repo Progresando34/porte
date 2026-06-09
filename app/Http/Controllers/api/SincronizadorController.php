@@ -199,6 +199,8 @@ public function importarEmpresas(Request $request)
         $errores_detalle = [];
 
         foreach ($empresas as $index => $empresa) {
+            $nit = null; // ← DEFINIR LA VARIABLE FUERA DEL TRY
+            
             try {
                 $nit = $empresa['nit'] ?? null;
                 
@@ -208,7 +210,6 @@ public function importarEmpresas(Request $request)
                     continue;
                 }
                 
-                // Limpiar datos: convertir valores vacíos a null
                 $datosLimpios = [];
                 foreach ($empresa as $key => $value) {
                     if ($value === '' || $value === null) {
@@ -218,7 +219,6 @@ public function importarEmpresas(Request $request)
                     }
                 }
                 
-                // Verificar si la empresa existe
                 $existe = DB::table('empresas')->where('nit', $nit)->exists();
 
                 if (!$existe) {
@@ -241,7 +241,7 @@ public function importarEmpresas(Request $request)
                 
             } catch (\Exception $e) {
                 $errores++;
-                $errorMsg = "Índice {$index} (NIT: {$nit}): " . $e->getMessage();
+                $errorMsg = "Índice {$index} (NIT: " . ($nit ?? 'null') . "): " . $e->getMessage();
                 $errores_detalle[] = $errorMsg;
                 Log::error("❌ " . $errorMsg);
             }
@@ -255,7 +255,6 @@ public function importarEmpresas(Request $request)
             'total_recibidas' => count($empresas)
         ];
         
-        // Agregar detalles de error si los hay
         if ($errores > 0) {
             $respuesta['detalle_errores'] = $errores_detalle;
         }
@@ -266,7 +265,6 @@ public function importarEmpresas(Request $request)
         
     } catch (\Exception $e) {
         Log::error('ERROR GENERAL en importarEmpresas: ' . $e->getMessage());
-        Log::error($e->getTraceAsString());
         
         return response()->json([
             'success' => false,
@@ -274,7 +272,7 @@ public function importarEmpresas(Request $request)
             'linea' => $e->getLine()
         ], 500);
     }
-}
+} // ← ESTA LLAVE FALTABA
     
     /**
      * Recibe archivos en base64 y los guarda como archivos físicos
