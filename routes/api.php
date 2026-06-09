@@ -18,12 +18,12 @@ Route::post('/importar-citas', function(Request $request) {
     
     foreach ($citas as $index => $cita) {
         try {
-            // Intentar insertar con los datos que lleguen
             $resultado = DB::table('citas_recibidas')->insert([
                 'cedula' => $cita['cedula'] ?? null,
-                'nombre' => $cita['nombre'] ?? null,
+                'nombre' => $cita['nombre'] ?? '',
                 'fecha' => $cita['fecha'] ?? null,
                 'nit_empresa' => $cita['empresa'] ?? null,
+                'nombre_empresa' => $cita['nombre_empresa'] ?? '',  // ← CAMPO REQUERIDO
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -31,7 +31,7 @@ Route::post('/importar-citas', function(Request $request) {
             if ($resultado) {
                 $insertadas++;
             } else {
-                $errores[] = "Cita $index: Falló la inserción sin excepción";
+                $errores[] = "Cita $index: Falló la inserción";
             }
         } catch (\Exception $e) {
             $errores[] = "Cita $index: " . $e->getMessage();
