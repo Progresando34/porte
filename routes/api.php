@@ -6,7 +6,7 @@ use App\Http\Controllers\api\ResultadosController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;  // ← AGREGA ESTA LÍNEA
 
-// HEALTH CHECK
+
 Route::get('/health', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()]);
 });
