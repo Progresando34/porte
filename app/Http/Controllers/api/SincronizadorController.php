@@ -106,62 +106,78 @@ class SincronizadorController extends Controller
         }
     }
 
-    public function importarCitas(Request $request)
-    {
-        try {
-            $citas = $request->input('citas', []);
-            
-            if (empty($citas)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No hay citas para importar'
-                ], 400);
-            }
-            
-            $insertadas = 0;
-            $errores = 0;
-            
-            foreach ($citas as $cita) {
-                try {
-                    $existe = DB::table('citas')
-                        ->where('consecutivo', $cita['consecutivo'] ?? null)
-                        ->where('nit_empresa', $cita['nit_empresa'] ?? null)
-                        ->exists();
-                    
-                    if (!$existe) {
-                        DB::table('citas')->insert([
-                            'consecutivo' => $cita['consecutivo'] ?? null,
-                            'nit_empresa' => $cita['nit_empresa'] ?? null,
-                            'documento' => $cita['documento'] ?? null,
-                            'cliente' => $cita['cliente'] ?? null,
-                            'fecha' => $cita['fecha'] ?? null,
-                            'hora' => $cita['hora'] ?? null,
-                            'estado' => $cita['estado'] ?? null,
-                            'observaciones' => $cita['observaciones'] ?? null,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                        $insertadas++;
-                    }
-                } catch (\Exception $e) {
-                    $errores++;
-                    Log::error('Error insertando cita: ' . $e->getMessage());
-                }
-            }
-            
-            return response()->json([
-                'success' => true,
-                'insertadas' => $insertadas,
-                'errores' => $errores
-            ]);
-            
-        } catch (\Exception $e) {
+public function importarCitas(Request $request)
+{
+    try {
+        $citas = $request->input('citas', []);
+        
+        if (empty($citas)) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+                'message' => 'No hay citas para importar'
+            ], 400);
         }
+        
+        $insertadas = 0;
+        $errores = 0;
+        $errores_detalle = [];
+        
+        foreach ($citas as $index => $cita) {
+            try {
+                // Mapear campos del DBF a la tabla citas
+                $datos = [
+                    'consecutivo' => $cita['consecutivo'] ?? null,
+                    'nit_empresa' => $cita['empresa'] ?? null,  // Campo EMPRESA del DBF
+                    'documento' => $cita['cedula'] ?? null,      // Campo CEDULA del DBF
+                    'cliente' => $cita['nombre'] ?? null,        // Campo NOMBRE del DBF
+                    'fecha' => $cita['fecha'] ?? null,           // Campo FECHA del DBF
+                    'hora' => $cita['hora'] ?? null,             // Campo HORA del DBF
+                    'estado' => $cita['estado'] ?? 'PENDIENTE',
+                    'observaciones' => $cita['observaciones'] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+                
+                // Verificar si ya existe (por nit_empresa + documento + fecha)
+                $existe = DB::table('citas')
+                    ->where('nit_empresa', $datos['nit_empresa'])
+                    ->where('documento', $datos['documento'])
+                    ->where('fecha', $datos['fecha'])
+                    ->exists();
+                
+                if (!$existe) {
+                    DB::table('citas')->insert($datos);
+                    $insertadas++;
+                }
+                
+            } catch (\Exception $e) {
+                $errores++;
+                if (count($errores_detalle) < 10) {
+                    $errores_detalle[] = "Error en cita {$index}: " . $e->getMessage();
+                }
+            }
+        }
+        
+        $respuesta = [
+            'success' => true,
+            'insertadas' => $insertadas,
+            'errores' => $errores,
+            'total_recibidas' => count($citas)
+        ];
+        
+        if (!empty($errores_detalle)) {
+            $respuesta['detalles'] = $errores_detalle;
+        }
+        
+        return response()->json($respuesta);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
 
 public function importarEmpresas(Request $request)
 {
