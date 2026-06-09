@@ -39,7 +39,7 @@ Route::post('/importar-citas', function(Request $request) {
     ]);
 });
 
-// ENDPOINTS DEL SINCRONIZADOR - USANDO EL CONTROLADOR
+
 Route::post('/sincronizar/archivos', [SincronizadorController::class, 'recibirArchivos']);
 Route::get('/sincronizar/pendientes/{nit}', [SincronizadorController::class, 'obtenerPendientes']);
 Route::post('/sincronizar/citas/importar', [SincronizadorController::class, 'importarCitas']);
