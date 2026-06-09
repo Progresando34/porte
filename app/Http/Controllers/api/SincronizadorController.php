@@ -179,7 +179,7 @@ public function importarEmpresas(Request $request)
             ], 400);
         }
 
-        // Obtener las columnas que REALMENTE existen en la tabla
+        // Obtener las columnas que existen en la tabla
         $columnasExistentes = Schema::getColumnListing('empresas');
         
         $insertadas = 0;
@@ -188,12 +188,13 @@ public function importarEmpresas(Request $request)
 
         foreach ($empresas as $empresa) {
             try {
-                // Filtrar SOLO las columnas que existen en la tabla
+                // Limpiar datos - incluir TODOS los campos
                 $datos = [];
                 foreach ($empresa as $key => $value) {
                     $columnaLimpia = strtolower(trim($key));
-                    // SOLO incluir si la columna existe en la tabla
+                    // Incluir si la columna existe
                     if (in_array($columnaLimpia, $columnasExistentes)) {
+                        // Convertir valores vacíos a null
                         if ($value === '' || $value === null) {
                             $datos[$columnaLimpia] = null;
                         } else {
@@ -202,25 +203,30 @@ public function importarEmpresas(Request $request)
                     }
                 }
                 
-                // Usar CODIGO como identificador (porque NIT tiene valores como '1')
+                // Usar CODIGO como identificador principal (incluyendo valor '1')
                 $codigo = $datos['codigo'] ?? null;
                 $nit = $datos['nit'] ?? null;
                 
-                // Priorizar CODIGO si es válido
+                // Determinar identificador - INCLUIR VALOR '1'
                 $identificador = null;
                 $campo = null;
                 
-                if ($codigo && $codigo !== '1' && $codigo !== '') {
+                // Priorizar CODIGO si existe (aunque sea '1')
+                if ($codigo !== null && $codigo !== '') {
                     $identificador = $codigo;
                     $campo = 'codigo';
-                } elseif ($nit && $nit !== '1' && $nit !== '') {
+                } 
+                // Si no hay CODIGO, usar NIT (aunque sea '1')
+                elseif ($nit !== null && $nit !== '') {
                     $identificador = $nit;
                     $campo = 'nit';
                 }
                 
+                // Si no hay identificador, usar una combinación única
                 if (!$identificador) {
-                    $errores++;
-                    continue;
+                    $identificador = 'temp_' . uniqid();
+                    $campo = 'codigo';
+                    $datos['codigo'] = $identificador;
                 }
                 
                 // Verificar si existe
@@ -232,13 +238,13 @@ public function importarEmpresas(Request $request)
                     $datos['created_at'] = now();
                     DB::table('empresas')->insert($datos);
                     $insertadas++;
-                    Log::info("Empresa INSERTADA: {$identificador}");
+                    Log::info("Empresa INSERTADA: {$campo}={$identificador}");
                 } else {
                     DB::table('empresas')
                         ->where($campo, $identificador)
                         ->update($datos);
                     $actualizadas++;
-                    Log::info("Empresa ACTUALIZADA: {$identificador}");
+                    Log::info("Empresa ACTUALIZADA: {$campo}={$identificador}");
                 }
                 
             } catch (\Exception $e) {
@@ -266,7 +272,7 @@ public function importarEmpresas(Request $request)
         ], 500);
     }
 }
-    
+
     public function recibirArchivos(Request $request)
     {
         //verifico
