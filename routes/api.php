@@ -11,7 +11,7 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()]);
 });
 
-// RUTA DE PRUEBA
+
 Route::post('/sincronizar/empresas/test-simple', function(Request $request) {
     try {
         $data = $request->all();
