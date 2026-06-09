@@ -10,16 +10,12 @@ use Illuminate\Support\Facades\Log;
 
 class SincronizadorController extends Controller
 {
-    /**
-     * El sincronizador consulta qué archivos necesita enviar
-     */
     public function obtenerPendientes(Request $request, $nit)
     {
         try {
             $fechaCorte = '2026-05-14';
             $prefijosPermitidos = ['a', 's', 'c', 'vis', 'ev'];
             
-            // aqui consulto en base de datos para tonar el nombre y mision de la empresa, solo de las que cumplen con las condiciones
             $empresa = DB::table('empresas')->where('nit', $nit)->first();
             
             if (!$empresa) {
@@ -31,18 +27,10 @@ class SincronizadorController extends Controller
             }
             
             $nombreEmpresa = $empresa->nombre ?? '';
-            $misionEmpresa = $empresa->mision ?? '';
-            
-            // CONCATENAR misión y nombre_empresa con un guión
-            $misionEmpresaConcatenado = '';
-            if ($misionEmpresa || $nombreEmpresa) {
-                $misionEmpresaConcatenado = trim($misionEmpresa . ' - ' . $nombreEmpresa);
-            }
+            $misionEmpresaConcatenado = $nombreEmpresa;
             
             Log::info("Procesando NIT: {$nit} - Empresa: {$nombreEmpresa}");
-            Log::info("Misión empresa concatenada: {$misionEmpresaConcatenado}");
             
-            // Usar la conexión por defecto
             $citasPendientes = DB::table('citas')
                 ->where('empresa', $nit)
                 ->where('fecha', '>=', $fechaCorte)
@@ -117,166 +105,138 @@ class SincronizadorController extends Controller
         }
     }
 
-
     public function importarCitas(Request $request)
-{
-    try {
-        $citas = $request->input('citas', []);
-        
-        if (empty($citas)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No hay citas para importar'
-            ], 400);
-        }
-        
-        $insertadas = 0;
-        $errores = 0;
-        
-        foreach ($citas as $cita) {
-            try {
-                $existe = DB::table('citas')
-                    ->where('consecutivo', $cita['consecutivo'] ?? null)
-                    ->where('nit_empresa', $cita['nit_empresa'] ?? null)
-                    ->exists();
-                
-                if (!$existe) {
-                    DB::table('citas')->insert([
-                        'consecutivo' => $cita['consecutivo'] ?? null,
-                        'nit_empresa' => $cita['nit_empresa'] ?? null,
-                        'documento' => $cita['documento'] ?? null,
-                        'cliente' => $cita['cliente'] ?? null,
-                        'fecha' => $cita['fecha'] ?? null,
-                        'hora' => $cita['hora'] ?? null,
-                        'estado' => $cita['estado'] ?? null,
-                        'observaciones' => $cita['observaciones'] ?? null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                    $insertadas++;
-                }
-            } catch (\Exception $e) {
-                $errores++;
-                Log::error('Error insertando cita: ' . $e->getMessage());
-            }
-        }
-        
-        return response()->json([
-            'success' => true,
-            'insertadas' => $insertadas,
-            'errores' => $errores
-        ]);
-        
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
-    }
-}
-
-public function importarEmpresas(Request $request)
-{
-    request()->headers->set('Accept', 'application/json');
-    
-    try {
-        Log::info('=== INICIO importarEmpresas ===');
-        
-        $empresas = $request->input('empresas', []);
-        
-        Log::info('Cantidad de empresas recibidas: ' . count($empresas));
-
-        if (empty($empresas)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No hay empresas para importar'
-            ], 400);
-        }
-
-        $insertadas = 0;
-        $actualizadas = 0;
-        $errores = 0;
-        $errores_detalle = [];
-
-        foreach ($empresas as $index => $empresa) {
-            $nit = null; // ← DEFINIR LA VARIABLE FUERA DEL TRY
+    {
+        try {
+            $citas = $request->input('citas', []);
             
-            try {
-                $nit = $empresa['nit'] ?? null;
-                
-                if (!$nit) {
-                    $errores++;
-                    $errores_detalle[] = "Índice {$index}: Sin NIT";
-                    continue;
-                }
-                
-                $datosLimpios = [];
-                foreach ($empresa as $key => $value) {
-                    if ($value === '' || $value === null) {
-                        $datosLimpios[$key] = null;
-                    } else {
-                        $datosLimpios[$key] = $value;
-                    }
-                }
-                
-                $existe = DB::table('empresas')->where('nit', $nit)->exists();
-
-                if (!$existe) {
-                    DB::table('empresas')->insert(array_merge(
-                        $datosLimpios,
-                        ['created_at' => now(), 'updated_at' => now()]
-                    ));
-                    $insertadas++;
-                    Log::info("✅ Empresa INSERTADA: {$nit}");
-                } else {
-                    DB::table('empresas')
-                        ->where('nit', $nit)
-                        ->update(array_merge(
-                            $datosLimpios,
-                            ['updated_at' => now()]
-                        ));
-                    $actualizadas++;
-                    Log::info("🔄 Empresa ACTUALIZADA: {$nit}");
-                }
-                
-            } catch (\Exception $e) {
-                $errores++;
-                $errorMsg = "Índice {$index} (NIT: " . ($nit ?? 'null') . "): " . $e->getMessage();
-                $errores_detalle[] = $errorMsg;
-                Log::error("❌ " . $errorMsg);
+            if (empty($citas)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay citas para importar'
+                ], 400);
             }
+            
+            $insertadas = 0;
+            $errores = 0;
+            
+            foreach ($citas as $cita) {
+                try {
+                    $existe = DB::table('citas')
+                        ->where('consecutivo', $cita['consecutivo'] ?? null)
+                        ->where('nit_empresa', $cita['nit_empresa'] ?? null)
+                        ->exists();
+                    
+                    if (!$existe) {
+                        DB::table('citas')->insert([
+                            'consecutivo' => $cita['consecutivo'] ?? null,
+                            'nit_empresa' => $cita['nit_empresa'] ?? null,
+                            'documento' => $cita['documento'] ?? null,
+                            'cliente' => $cita['cliente'] ?? null,
+                            'fecha' => $cita['fecha'] ?? null,
+                            'hora' => $cita['hora'] ?? null,
+                            'estado' => $cita['estado'] ?? null,
+                            'observaciones' => $cita['observaciones'] ?? null,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        $insertadas++;
+                    }
+                } catch (\Exception $e) {
+                    $errores++;
+                    Log::error('Error insertando cita: ' . $e->getMessage());
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'insertadas' => $insertadas,
+                'errores' => $errores
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        $respuesta = [
-            'success' => true,
-            'insertadas' => $insertadas,
-            'actualizadas' => $actualizadas,
-            'errores' => $errores,
-            'total_recibidas' => count($empresas)
-        ];
-        
-        if ($errores > 0) {
-            $respuesta['detalle_errores'] = $errores_detalle;
-        }
-        
-        Log::info("=== FIN importarEmpresas: Insertadas={$insertadas}, Actualizadas={$actualizadas}, Errores={$errores} ===");
-        
-        return response()->json($respuesta);
-        
-    } catch (\Exception $e) {
-        Log::error('ERROR GENERAL en importarEmpresas: ' . $e->getMessage());
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Error en el servidor: ' . $e->getMessage(),
-            'linea' => $e->getLine()
-        ], 500);
     }
-} // ← ESTA LLAVE FALTABA
+
+    public function importarEmpresas(Request $request)
+    {
+        try {
+            Log::info('=== INICIO importarEmpresas ===');
+            
+            $empresas = $request->input('empresas', []);
+            
+            Log::info('Cantidad de empresas recibidas: ' . count($empresas));
+
+            if (empty($empresas)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay empresas para importar'
+                ], 400);
+            }
+
+            $insertadas = 0;
+            $actualizadas = 0;
+            $errores = 0;
+
+            foreach ($empresas as $empresa) {
+                try {
+                    $nit = $empresa['nit'] ?? null;
+                    
+                    if (!$nit) {
+                        $errores++;
+                        continue;
+                    }
+                    
+                    $existe = DB::table('empresas')->where('nit', $nit)->exists();
+
+                    if (!$existe) {
+                        DB::table('empresas')->insert(array_merge(
+                            $empresa,
+                            ['created_at' => now(), 'updated_at' => now()]
+                        ));
+                        $insertadas++;
+                        Log::info("Empresa INSERTADA: {$nit}");
+                    } else {
+                        DB::table('empresas')
+                            ->where('nit', $nit)
+                            ->update(array_merge(
+                                $empresa,
+                                ['updated_at' => now()]
+                            ));
+                        $actualizadas++;
+                        Log::info("Empresa ACTUALIZADA: {$nit}");
+                    }
+                    
+                } catch (\Exception $e) {
+                    $errores++;
+                    Log::error("Error en empresa: " . $e->getMessage());
+                }
+            }
+
+            Log::info("=== FIN importarEmpresas: Insertadas={$insertadas}, Actualizadas={$actualizadas}, Errores={$errores} ===");
+            
+            return response()->json([
+                'success' => true,
+                'insertadas' => $insertadas,
+                'actualizadas' => $actualizadas,
+                'errores' => $errores,
+                'total_recibidas' => count($empresas)
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('ERROR GENERAL en importarEmpresas: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error en el servidor: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     
-    /**
-     * Recibe archivos en base64 y los guarda como archivos físicos
-     */
     public function recibirArchivos(Request $request)
     {
         try {
@@ -295,7 +255,6 @@ public function importarEmpresas(Request $request)
             $existentes = 0;
             $errores = 0;
             
-            // Agrupar por cédula
             $porCedula = [];
             foreach ($archivos as $archivoData) {
                 $cedula = $archivoData['cedula'];
@@ -311,7 +270,6 @@ public function importarEmpresas(Request $request)
             foreach ($porCedula as $cedula => $data) {
                 $primerArchivo = $data['cita'];
                 
-                // Buscar o crear la cita
                 $cita = CitaRecibida::firstOrCreate(
                     [
                         'cedula' => $cedula,
@@ -326,51 +284,40 @@ public function importarEmpresas(Request $request)
                     ]
                 );
                 
-                // Si ya tiene carpeta copiada, no volver a copiar
                 if ($cita->carpeta_copiada) {
                     $existentes += count($data['archivos']);
                     continue;
                 }
                 
-                // Crear la carpeta destino
                 $rutaDestino = storage_path('app/public/RESULTADOS/' . $cedula);
                 if (!is_dir($rutaDestino)) {
                     mkdir($rutaDestino, 0777, true);
-                    Log::info("Carpeta creada: " . $rutaDestino);
                 }
                 
-                // Guardar cada archivo
                 $archivosGuardados = 0;
                 foreach ($data['archivos'] as $archivoData) {
                     $nombreArchivo = $archivoData['nombre_archivo'];
                     $rutaArchivo = $rutaDestino . '/' . $nombreArchivo;
                     
-                    // Verificar si ya existe
                     if (file_exists($rutaArchivo)) {
-                        Log::info("Archivo ya existe: " . $nombreArchivo);
                         continue;
                     }
                     
-                    // ✅ IMPORTANTE: Decodificar base64 a binario
                     $contenidoBase64 = $archivoData['contenido_base64'];
                     $contenidoBinario = base64_decode($contenidoBase64);
                     
                     if ($contenidoBinario === false) {
-                        Log::error("Error al decodificar base64: " . $nombreArchivo);
                         $errores++;
                         continue;
                     }
                     
-                    // Guardar el archivo binario
                     $bytesEscritos = file_put_contents($rutaArchivo, $contenidoBinario);
                     
                     if ($bytesEscritos === false) {
-                        Log::error("Error al guardar archivo: " . $rutaArchivo);
                         $errores++;
                         continue;
                     }
                     
-                    Log::info("✅ Archivo guardado: {$nombreArchivo} - Tamaño: {$bytesEscritos} bytes");
                     $archivosGuardados++;
                     $guardados++;
                 }
@@ -381,7 +328,6 @@ public function importarEmpresas(Request $request)
                         'carpeta_copiada' => true,
                         'fecha_copia' => now()
                     ]);
-                    Log::info("✅ Cita actualizada: {$cedula} - {$archivosGuardados} archivos");
                 }
             }
             
@@ -398,7 +344,6 @@ public function importarEmpresas(Request $request)
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error en recibirArchivos: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
             
             return response()->json([
                 'success' => false,
