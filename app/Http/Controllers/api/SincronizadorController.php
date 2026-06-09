@@ -239,6 +239,7 @@ class SincronizadorController extends Controller
     
     public function recibirArchivos(Request $request)
     {
+        //verifico
         try {
             $archivos = $request->input('archivos');
             
