@@ -10,6 +10,27 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()]);
 });
 
+Route::post('/importar-citas', function(Request $request) {
+    $citas = $request->input('citas', []);
+    $insertadas = 0;
+    
+    foreach ($citas as $cita) {
+        try {
+            DB::table('citas_recibidas')->insert([
+                'cedula' => $cita['cedula'],
+                'nombre' => $cita['nombre'],
+                'fecha' => $cita['fecha'],
+                'nit_empresa' => $cita['empresa'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $insertadas++;
+        } catch (\Exception $e) {}
+    }
+    
+    return response()->json(['insertadas' => $insertadas]);
+});
+
 // ENDPOINTS DEL SINCRONIZADOR - USANDO EL CONTROLADOR
 Route::post('/sincronizar/archivos', [SincronizadorController::class, 'recibirArchivos']);
 Route::get('/sincronizar/pendientes/{nit}', [SincronizadorController::class, 'obtenerPendientes']);
