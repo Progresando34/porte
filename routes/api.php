@@ -45,6 +45,45 @@ Route::post('/importar-citas', function(Request $request) {
     ]);
 });
 
+use App\Models\Profile;
+
+Route::post('/perfil/crear', function(Request $request) {
+    try {
+        $name = $request->input('name');
+        
+        if (!$name) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El nombre del perfil es requerido'
+            ], 400);
+        }
+        
+        // Buscar si ya existe
+        $profile = Profile::where('name', $name)->first();
+        
+        if (!$profile) {
+            $profile = Profile::create(['name' => $name]);
+            $creado = true;
+        } else {
+            $creado = false;
+        }
+        
+        return response()->json([
+            'success' => true,
+            'id' => $profile->id,
+            'name' => $profile->name,
+            'creado' => $creado,
+            'message' => $creado ? 'Perfil creado' : 'El perfil ya existía'
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});
+
 Route::post('/sincronizar/archivos', [SincronizadorController::class, 'recibirArchivos']);
 Route::get('/sincronizar/pendientes/{nit}', [SincronizadorController::class, 'obtenerPendientes']);
 Route::post('/sincronizar/citas/importar', [SincronizadorController::class, 'importarCitas']);
