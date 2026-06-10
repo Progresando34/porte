@@ -54,22 +54,20 @@ class SoloVistaController extends Controller
      */
 public function buscar(Request $request)
 {
-    // 🔥 INTERCEPTAR TODAS LAS PETICIONES GET
-    if ($request->isMethod('get')) {
-        // Log para depuración
-        Log::warning('Intento de acceso GET a /buscar', [
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'referer' => $request->headers->get('referer'),
-            'query_string' => $request->getQueryString()
-        ]);
-        
-        // Redirigir amigablemente al índice
-        return redirect()->route('solo_vista.index')
-            ->with('mensaje', '⚠️ Por favor use el formulario de búsqueda para consultar documentos');
+    // 🔥 IMPORTANTE: SI ES GET PERO VIENE DEL FORMULARIO (tiene datos), PROCESAR
+    if ($request->isMethod('get') && ($request->has('cedula') || $request->has('cedulas_multiple'))) {
+        // Convertir a POST virtualmente para procesar
+        $request->setMethod('POST');
     }
     
-    // Tu código original aquí (solo para POST)
+    // Solo redirigir si es GET sin datos (acceso directo a la URL)
+    if ($request->isMethod('get')) {
+        Log::info('Acceso GET directo a /buscar sin datos');
+        return redirect()->route('solo_vista.index')
+            ->with('mensaje', '⚠️ Por favor use el formulario de búsqueda');
+    }
+    
+    // Tu código de procesamiento (POST)
     try {
         $request->validate([
             'cedula' => 'nullable|string',
@@ -97,7 +95,8 @@ public function buscar(Request $request)
         $cedulas = array_unique($cedulas);
         
         if (empty($cedulas)) {
-            return back()->with('mensaje', 'Por favor ingrese al menos una cédula');
+            return redirect()->route('solo_vista.index')
+                ->with('mensaje', '⚠️ Por favor ingrese al menos una cédula');
         }
         
         $resultados = [];
@@ -113,7 +112,8 @@ public function buscar(Request $request)
         }
         
         if (empty($resultados)) {
-            return back()->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas');
+            return redirect()->route('solo_vista.index')
+                ->with('mensaje', '⚠️ No se encontraron documentos para la cédula: ' . implode(', ', $cedulas));
         }
         
         $prefijosPermitidos = $this->getUserAllowedPrefixes();
@@ -122,8 +122,32 @@ public function buscar(Request $request)
         
     } catch (\Exception $e) {
         Log::error('Error en búsqueda: ' . $e->getMessage());
-        return back()->with('mensaje', 'Error al buscar: ' . $e->getMessage());
+        return redirect()->route('solo_vista.index')
+            ->with('mensaje', '❌ Error al buscar: ' . $e->getMessage());
     }
+}
+
+public function debugCedula($cedula = null)
+{
+    if (!$cedula) {
+        return 'No se especificó cédula. Use: /debug-verificar/12345678';
+    }
+    
+    $documentos = CitaRecibida::where('cedula', 'LIKE', "%{$cedula}%")->get();
+    
+    return [
+        'cedula_buscada' => $cedula,
+        'total_encontrados' => $documentos->count(),
+        'documentos' => $documentos->map(function($doc) {
+            return [
+                'id' => $doc->id,
+                'cedula' => $doc->cedula,
+                'nombre' => $doc->nombre,
+                'mision' => $doc->mision,
+                'fecha' => $doc->fecha
+            ];
+        })->toArray()
+    ];
 }
     
     /**

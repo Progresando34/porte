@@ -108,6 +108,7 @@ Route::prefix('solo-vista')->middleware('auth')->group(function () {
     Route::get('/ver-documentos/{cedula}', [SoloVistaController::class, 'verDocumentos'])->name('solo_vista.ver.documentos');
     Route::get('/ver-pdf/{id}', [SoloVistaController::class, 'verPdf'])->name('solo_vista.ver.pdf');
     Route::get('/ver-fusionados/{cedula}', [SoloVistaController::class, 'verFusionados'])->name('solo_vista.ver.fusionados');
+    Route::get('/debug-verificar/{cedula}', [SoloVistaController::class, 'debugCedula']);
 });
      // Rayos X
     Route::get('/rayosx', [RayosXController::class, 'index'])->name('rayosx.index');
