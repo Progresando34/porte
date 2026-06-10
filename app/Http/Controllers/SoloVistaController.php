@@ -52,7 +52,7 @@ class SoloVistaController extends Controller
      */
 public function buscar(Request $request)
 {
-    // 🔥 DEPURACIÓN EXTREMA - Esto DEBE aparecer en el log
+    //  DEPURACIÓN EXTREMA - Esto DEBE aparecer en el log
     \Illuminate\Support\Facades\Log::info('🚨🚨🚨 EL MÉTODO BUSCAR SE EJECUTÓ 🚨🚨🚨');
     \Illuminate\Support\Facades\Log::info('Método HTTP: ' . $request->method());
     \Illuminate\Support\Facades\Log::info('Todos los datos:', $request->all());
