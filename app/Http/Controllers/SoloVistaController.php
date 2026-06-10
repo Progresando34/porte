@@ -29,10 +29,7 @@ class SoloVistaController extends Controller
         return $prefijos;
     }
     
-    /**
-     * Extrae el prefijo del nombre del archivo
-     * Ejemplos: "H20260522.pdf" -> "H", "C20260522.pdf" -> "C", "CMA20260522.pdf" -> "CMA"
-     */
+
     private function extraerPrefijo($nombreArchivo)
     {
         // Busca letras al inicio del nombre (pueden ser 1 o más caracteres)
