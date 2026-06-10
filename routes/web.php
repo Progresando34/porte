@@ -86,7 +86,7 @@ Route::resource('trabajadores', TrabajadorController::class);
         return view('admin.dashboard');
     })->name('admin.dashboard');
     
-    // Rutas CRUD de archivos
+    
     Route::get('/archivos', [ArchivoController::class, 'index'])->name('archivos.index');
     Route::post('/archivos', [ArchivoController::class, 'store'])->name('archivos.store');
     Route::delete('/archivos/{archivo}', [ArchivoController::class, 'destroy'])->name('archivos.destroy');
