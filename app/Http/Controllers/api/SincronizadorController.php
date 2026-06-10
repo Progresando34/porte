@@ -36,7 +36,7 @@ public function obtenerPendientes(Request $request, $nit)
                 'nit_empresa' => $nit,
                 'nombre_empresa' => $cita->nombre_empresa ?? '',
                 'mision_empresa' => $cita->mision_empresa ?? '',
-                'archivos' => []  // Vacío, el script Python buscará localmente
+                'archivos' => []  
             ];
         }
         
