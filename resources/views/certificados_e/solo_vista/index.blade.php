@@ -737,7 +737,7 @@
                 </div>
             @elseif(isset($resultados))
                 <div class="mensaje warning">
-                    No se encontraron documentos para las cédulas ingresadas.
+                    ⚠️ No se encontraron documentos para las cédulas ingresadas.
                 </div>
             @endif
 
@@ -768,23 +768,34 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// UN SOLO event listener para el formulario
+// Prevenir envío múltiple del formulario
+document.getElementById('busquedaForm')?.addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading"></span> Buscando...';
+    }
+});
+
+// Validar que al menos haya una cédula
 document.getElementById('busquedaForm')?.addEventListener('submit', function(e) {
     const cedulaSimple = document.getElementById('cedula').value.trim();
     const cedulasMultiples = document.getElementById('cedulas_multiple');
     let hasValue = false;
     
     if (cedulaSimple) hasValue = true;
+    
     if (cedulasMultiples && cedulasMultiples.value.trim()) hasValue = true;
     
     if (!hasValue) {
         e.preventDefault();
         alert('Por favor ingrese al menos una cédula para buscar');
-        return false;
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '🔍 Buscar Documentos';
+        }
     }
-    
-    // Si hay valores, permitir el envío normal
-    return true;
 });
 </script>
 </body>

@@ -86,7 +86,7 @@ Route::resource('trabajadores', TrabajadorController::class);
         return view('admin.dashboard');
     })->name('admin.dashboard');
     
-    
+    // Rutas CRUD de archivos
     Route::get('/archivos', [ArchivoController::class, 'index'])->name('archivos.index');
     Route::post('/archivos', [ArchivoController::class, 'store'])->name('archivos.store');
     Route::delete('/archivos/{archivo}', [ArchivoController::class, 'destroy'])->name('archivos.destroy');
@@ -103,7 +103,7 @@ Route::resource('trabajadores', TrabajadorController::class);
 // ========== RUTAS PARA SOLO VISUALIZACIÓN (USUARIO ESPECIAL) ==========
 Route::prefix('solo-vista')->middleware('auth')->group(function () {
     Route::get('/', [SoloVistaController::class, 'index'])->name('solo_vista.index');
-    Route::match(['get', 'post'], '/buscar', [SoloVistaController::class, 'buscar'])->name('solo_vista.buscar');
+    Route::post('/buscar', [SoloVistaController::class, 'buscar'])->name('solo_vista.buscar');
     Route::get('/ver-documentos/{cedula}', [SoloVistaController::class, 'verDocumentos'])->name('solo_vista.ver.documentos');
     Route::get('/ver-pdf/{id}', [SoloVistaController::class, 'verPdf'])->name('solo_vista.ver.pdf');
     Route::get('/ver-fusionados/{cedula}', [SoloVistaController::class, 'verFusionados'])->name('solo_vista.ver.fusionados');

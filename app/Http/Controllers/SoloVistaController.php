@@ -54,6 +54,8 @@ class SoloVistaController extends Controller
      */
     public function buscar(Request $request)
     {
+
+        file_put_contents(storage_path('logs/debug.txt'), date('Y-m-d H:i:s') . ' - Método: ' . $request->method() . ' - Datos: ' . json_encode($request->all()) . PHP_EOL, FILE_APPEND);
         try {
             $request->validate([
                 'cedula' => 'nullable|string',
