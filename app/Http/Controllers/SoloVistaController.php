@@ -52,63 +52,79 @@ class SoloVistaController extends Controller
     /**
      * Busca documentos por cédula(s)
      */
-    public function buscar(Request $request)
-    {
-        try {
-            $request->validate([
-                'cedula' => 'nullable|string',
-                'cedulas_multiple' => 'nullable|array',
-            ]);
+public function buscar(Request $request)
+{
+    // 🔥 INTERCEPTAR TODAS LAS PETICIONES GET
+    if ($request->isMethod('get')) {
+        // Log para depuración
+        Log::warning('Intento de acceso GET a /buscar', [
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'referer' => $request->headers->get('referer'),
+            'query_string' => $request->getQueryString()
+        ]);
+        
+        // Redirigir amigablemente al índice
+        return redirect()->route('solo_vista.index')
+            ->with('mensaje', '⚠️ Por favor use el formulario de búsqueda para consultar documentos');
+    }
+    
+    // Tu código original aquí (solo para POST)
+    try {
+        $request->validate([
+            'cedula' => 'nullable|string',
+            'cedulas_multiple' => 'nullable|array',
+        ]);
 
-            $cedulas = [];
-            
-            if ($request->filled('cedula')) {
-                $cedulas[] = trim($request->cedula);
-            }
-            
-            if ($request->filled('cedulas_multiple')) {
-                foreach ($request->cedulas_multiple as $linea) {
-                    $cedulasArray = explode("\n", $linea);
-                    foreach ($cedulasArray as $ced) {
-                        $cedula = trim($ced);
-                        if (!empty($cedula)) {
-                            $cedulas[] = $cedula;
-                        }
+        $cedulas = [];
+        
+        if ($request->filled('cedula')) {
+            $cedulas[] = trim($request->cedula);
+        }
+        
+        if ($request->filled('cedulas_multiple')) {
+            foreach ($request->cedulas_multiple as $linea) {
+                $cedulasArray = explode("\n", $linea);
+                foreach ($cedulasArray as $ced) {
+                    $cedula = trim($ced);
+                    if (!empty($cedula)) {
+                        $cedulas[] = $cedula;
                     }
                 }
             }
-            
-            $cedulas = array_unique($cedulas);
-            
-            if (empty($cedulas)) {
-                return back()->with('mensaje', 'Por favor ingrese al menos una cédula');
-            }
-            
-            $resultados = [];
-            
-            foreach ($cedulas as $cedula) {
-                $documentos = CitaRecibida::where('cedula', 'LIKE', "%{$cedula}%")
-                    ->orderBy('fecha', 'desc')
-                    ->get();
-                
-                if ($documentos->count() > 0) {
-                    $resultados[$cedula] = $documentos;
-                }
-            }
-            
-            if (empty($resultados)) {
-                return back()->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas');
-            }
-            
-            $prefijosPermitidos = $this->getUserAllowedPrefixes();
-            
-            return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
-            
-        } catch (\Exception $e) {
-            Log::error('Error en búsqueda: ' . $e->getMessage());
-            return back()->with('mensaje', 'Error al buscar: ' . $e->getMessage());
         }
+        
+        $cedulas = array_unique($cedulas);
+        
+        if (empty($cedulas)) {
+            return back()->with('mensaje', 'Por favor ingrese al menos una cédula');
+        }
+        
+        $resultados = [];
+        
+        foreach ($cedulas as $cedula) {
+            $documentos = CitaRecibida::where('cedula', 'LIKE', "%{$cedula}%")
+                ->orderBy('fecha', 'desc')
+                ->get();
+            
+            if ($documentos->count() > 0) {
+                $resultados[$cedula] = $documentos;
+            }
+        }
+        
+        if (empty($resultados)) {
+            return back()->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas');
+        }
+        
+        $prefijosPermitidos = $this->getUserAllowedPrefixes();
+        
+        return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
+        
+    } catch (\Exception $e) {
+        Log::error('Error en búsqueda: ' . $e->getMessage());
+        return back()->with('mensaje', 'Error al buscar: ' . $e->getMessage());
     }
+}
     
     /**
      * Ver TODOS los documentos (PDFs) de una cédula - FILTRADO POR PREFIJOS DEL USUARIO
