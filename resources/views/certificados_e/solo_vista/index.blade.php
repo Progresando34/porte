@@ -759,41 +759,10 @@ if (menuToggle) {
     });
 }
 
-// Cerrar sidebar al hacer clic fuera en móvil
 document.addEventListener('click', function(event) {
     if (window.innerWidth <= 768) {
         if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
             sidebar.classList.remove('open');
-        }
-    }
-});
-
-// Prevenir envío múltiple del formulario
-document.getElementById('busquedaForm')?.addEventListener('submit', function(e) {
-    const submitBtn = document.getElementById('submitBtn');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="loading"></span> Buscando...';
-    }
-});
-
-// Validar que al menos haya una cédula
-document.getElementById('busquedaForm')?.addEventListener('submit', function(e) {
-    const cedulaSimple = document.getElementById('cedula').value.trim();
-    const cedulasMultiples = document.getElementById('cedulas_multiple');
-    let hasValue = false;
-    
-    if (cedulaSimple) hasValue = true;
-    
-    if (cedulasMultiples && cedulasMultiples.value.trim()) hasValue = true;
-    
-    if (!hasValue) {
-        e.preventDefault();
-        alert('Por favor ingrese al menos una cédula para buscar');
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '🔍 Buscar Documentos';
         }
     }
 });
