@@ -232,87 +232,96 @@ public function recibirArchivos(Request $request)
             ], 400);
         }
         
-        DB::beginTransaction();
-        
-        $citasGuardadas = 0;
-        $citasOmitidas = 0;
+        $archivosGuardados = 0;
         $errores = 0;
         
-        // Fecha de corte para filtrar citas
-        $fechaCorte = '2026-05-14';
-        
-        // Agrupar por cédula para evitar duplicados
-        $citasUnicas = [];
         foreach ($archivos as $archivoData) {
-            $cedula = $archivoData['cedula'];
-            if (!isset($citasUnicas[$cedula])) {
-                $citasUnicas[$cedula] = $archivoData;
-            }
-        }
-        
-        foreach ($citasUnicas as $cedula => $citaData) {
             try {
-                $fechaCita = $citaData['fecha_cita'] ?? null;
+                $cedula = $archivoData['cedula'];
+                $nombreArchivo = $archivoData['nombre_archivo'];
+                $contenidoBase64 = $archivoData['contenido_base64'];
                 
-                // VERIFICAR CONDICIÓN: Solo citas con fecha >= fechaCorte Y cédula no esté vacía
-                if ($fechaCita && $fechaCita >= $fechaCorte && $cedula && $cedula !== '') {
+                // Extraer prefijo y fecha del nombre del archivo
+                // Formato: vis20260514.pdf
+                preg_match('/^([a-z]+)(\d{8})\.pdf$/i', $nombreArchivo, $matches);
+                
+                if (count($matches) >= 3) {
+                    $prefijo = strtoupper($matches[1]);
+                    $fechaArchivo = $matches[2];
                     
-                    // Verificar si ya existe para evitar duplicados
-                    $existe = CitaRecibida::where('cedula', $cedula)
-                        ->where('fecha', $fechaCita)
-                        ->exists();
-                    
-                    if (!$existe) {
-                        // Crear la cita en la tabla citas_recibidas
-                        $cita = CitaRecibida::create([
-                            'cedula' => $cedula,
-                            'fecha' => $fechaCita,
-                            'nombre' => $citaData['nombre'] ?? '',
-                            'mision' => $citaData['mision'] ?? '',
-                            'nit_empresa' => $citaData['nit_empresa'] ?? '',
-                            'nombre_empresa' => $citaData['nombre_empresa'] ?? '',
-                            'mision_empresa' => $citaData['mision_empresa'] ?? '',
-                            'carpeta_copiada' => false,
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ]);
-                        
-                        $citasGuardadas++;
-                        Log::info("Cita guardada: {$cedula} - {$fechaCita}");
-                    } else {
-                        $citasOmitidas++;
-                        Log::info("Cita ya existe, omitida: {$cedula} - {$fechaCita}");
+                    // Validar fecha >= 20260514
+                    if ($fechaArchivo < '20260514') {
+                        Log::info("Archivo omitido por fecha: {$nombreArchivo} (fecha: {$fechaArchivo})");
+                        continue;
                     }
-                } else {
-                    $citasOmitidas++;
-                    Log::info("Cita omitida por condición: {$cedula} - {$fechaCita}");
+                    
+                    // Validar prefijos permitidos
+                    $prefijosPermitidos = ['A', 'C', 'EV', 'S', 'VIS'];
+                    if (!in_array($prefijo, $prefijosPermitidos)) {
+                        Log::info("Archivo omitido por prefijo: {$nombreArchivo} (prefijo: {$prefijo})");
+                        continue;
+                    }
                 }
+                
+                // Decodificar contenido
+                $contenido = base64_decode($contenidoBase64);
+                
+                if ($contenido === false) {
+                    throw new \Exception('Error al decodificar archivo');
+                }
+                
+                // Crear carpeta
+                $carpeta = storage_path('app/public/RESULTADOS/' . $cedula);
+                if (!is_dir($carpeta)) {
+                    mkdir($carpeta, 0777, true);
+                }
+                
+                // Guardar archivo
+                $rutaCompleta = $carpeta . '/' . $nombreArchivo;
+                file_put_contents($rutaCompleta, $contenido);
+                
+                // Actualizar o crear cita
+                CitaRecibida::updateOrCreate(
+                    [
+                        'cedula' => $cedula,
+                        'fecha' => $archivoData['fecha_cita'] ?? null
+                    ],
+                    [
+                        'nombre' => $archivoData['nombre'] ?? '',
+                        'mision' => $archivoData['mision'] ?? '',
+                        'nit_empresa' => $archivoData['nit_empresa'] ?? '',
+                        'nombre_empresa' => $archivoData['nombre_empresa'] ?? '',
+                        'mision_empresa' => $archivoData['mision_empresa'] ?? '',
+                        'carpeta_copiada' => true,
+                        'updated_at' => now()
+                    ]
+                );
+                
+                $archivosGuardados++;
+                Log::info("Archivo guardado: {$cedula}/{$nombreArchivo}");
                 
             } catch (\Exception $e) {
                 $errores++;
-                Log::error("Error guardando cita {$cedula}: " . $e->getMessage());
+                Log::error("Error guardando archivo: " . $e->getMessage());
             }
         }
         
-        DB::commit();
-        
         return response()->json([
             'success' => true,
-            'message' => "Citas guardadas: {$citasGuardadas}, Omitidas: {$citasOmitidas}, Errores: {$errores}",
-            'citas_guardadas' => $citasGuardadas,
-            'citas_omitidas' => $citasOmitidas,
+            'archivos_guardados' => $archivosGuardados,
             'errores' => $errores,
-            'total_recibidas' => count($citasUnicas)
+            'total_recibidos' => count($archivos)
         ]);
         
     } catch (\Exception $e) {
-        DB::rollBack();
         Log::error('Error en recibirArchivos: ' . $e->getMessage());
         
         return response()->json([
             'success' => false,
-            'message' => 'Error al procesar citas: ' . $e->getMessage()
+            'message' => 'Error al procesar archivos: ' . $e->getMessage()
         ], 500);
     }
 }
+
+
 }
