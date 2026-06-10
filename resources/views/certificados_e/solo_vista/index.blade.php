@@ -783,7 +783,7 @@ document.getElementById('busquedaForm')?.addEventListener('submit', function(e) 
         return false;
     }
     
-    // Si hay valores, permitir el envío normal
+
     return true;
 });
 </script>
