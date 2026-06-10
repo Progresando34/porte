@@ -40,9 +40,7 @@ class SoloVistaController extends Controller
         return isset($matches[1]) ? strtoupper($matches[1]) : '';
     }
     
-    /**
-     * Muestra el panel principal de solo visualización
-     */
+  
     public function index()
     {
         $prefijosPermitidos = $this->getUserAllowedPrefixes();
