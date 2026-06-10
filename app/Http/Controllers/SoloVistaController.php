@@ -137,6 +137,26 @@ public function verDocumentos($cedula)
         return back()->with('mensaje', 'Error al cargar los documentos: ' . $e->getMessage());
     }
 }
+
+public function verDocumentos($cedula)
+{
+    // DEPURACIÓN: Verificar rutas
+    $ruta1 = storage_path('app/public/RESULTADOS/' . $cedula);
+    $ruta2 = 'Z:/Saips2/pdf/' . $cedula;
+    
+    $debug = [
+        'ruta_buscada_1' => $ruta1,
+        'existe_ruta_1' => is_dir($ruta1),
+        'archivos_ruta_1' => is_dir($ruta1) ? scandir($ruta1) : [],
+        'ruta_buscada_2' => $ruta2,
+        'existe_ruta_2' => is_dir($ruta2),
+        'archivos_ruta_2' => is_dir($ruta2) ? scandir($ruta2) : [],
+    ];
+    
+    return response()->json($debug);
+    
+    // Resto del código...
+}
     
     /**
      * Ver PDF específico - CON VERIFICACIÓN DE PREFIJO
