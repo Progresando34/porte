@@ -768,34 +768,23 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// Prevenir envío múltiple del formulario
-document.getElementById('busquedaForm')?.addEventListener('submit', function(e) {
-    const submitBtn = document.getElementById('submitBtn');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="loading"></span> Buscando...';
-    }
-});
-
-// Validar que al menos haya una cédula
+// SOLO UN event listener para el formulario
 document.getElementById('busquedaForm')?.addEventListener('submit', function(e) {
     const cedulaSimple = document.getElementById('cedula').value.trim();
     const cedulasMultiples = document.getElementById('cedulas_multiple');
     let hasValue = false;
     
     if (cedulaSimple) hasValue = true;
-    
     if (cedulasMultiples && cedulasMultiples.value.trim()) hasValue = true;
     
     if (!hasValue) {
         e.preventDefault();
         alert('Por favor ingrese al menos una cédula para buscar');
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '🔍 Buscar Documentos';
-        }
+        return false;
     }
+    
+    // Si hay valores, permitir el envío normal
+    return true;
 });
 </script>
 </body>
