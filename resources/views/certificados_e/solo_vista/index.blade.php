@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consulta de Documentos - Solo Visualización</title>
     <style>
-        /* Reset y base mobile-first */
         * {
             margin: 0;
             padding: 0;
@@ -20,13 +19,11 @@
             line-height: 1.6;
         }
         
-        /* Layout con sidebar */
         .app-wrapper {
             display: flex;
             min-height: 100vh;
         }
         
-        /* Sidebar personalizado */
         .sidebar-custom {
             width: 280px;
             background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
@@ -100,7 +97,6 @@
             font-size: 1.2rem;
         }
         
-        /* Contenido principal */
         .main-content {
             flex: 1;
             margin-left: 280px;
@@ -109,7 +105,6 @@
             min-height: 100vh;
         }
         
-        /* Header del contenido */
         .content-header {
             background: white;
             padding: 20px 25px;
@@ -147,7 +142,6 @@
             margin: 0;
         }
         
-        /* Container principal */
         .container-custom {
             background: white;
             padding: 25px;
@@ -167,7 +161,6 @@
             border-bottom: 2px solid #eaeaea;
         }
         
-        /* Información del usuario */
         .user-info {
             background: linear-gradient(to right, #ffffff, #ffffff);
             padding: 20px;
@@ -207,7 +200,6 @@
             word-break: break-word;
         }
         
-        /* Formulario */
         .form-group {
             margin-bottom: 20px;
         }
@@ -281,7 +273,6 @@
             font-weight: 500;
         }
         
-        /* Botones */
         .button-group {
             display: flex;
             flex-direction: column;
@@ -329,7 +320,6 @@
             box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
         }
         
-        /* Resultados */
         .resultados-container {
             margin-top: 30px;
         }
@@ -408,7 +398,6 @@
             font-size: 0.8rem;
         }
         
-        /* Grid de información */
         .info-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -438,7 +427,6 @@
             word-break: break-word;
         }
         
-        /* Mensajes */
         .mensaje {
             padding: 15px;
             border-radius: 8px;
@@ -465,7 +453,6 @@
             border: 1px solid #f5c6cb;
         }
         
-        /* Footer */
         .footer-note {
             text-align: center;
             margin-top: 30px;
@@ -475,7 +462,6 @@
             color: #6c757d;
         }
         
-        /* Botón de logout */
         .logout-btn {
             margin-top: 30px;
             border-top: 1px solid rgba(255,255,255,0.1);
@@ -497,7 +483,6 @@
             color: #ff6b6b;
         }
         
-        /* Responsive */
         @media (max-width: 768px) {
             .sidebar-custom {
                 transform: translateX(-100%);
@@ -533,7 +518,6 @@
             }
         }
         
-        /* Animación de carga */
         .loading {
             display: inline-block;
             width: 20px;
@@ -557,7 +541,6 @@
 </head>
 <body>
 <div class="app-wrapper">
-    <!-- Sidebar personalizado -->
     <div class="sidebar-custom" id="sidebar">
         <div class="logo-sidebar">
             <img src="{{ asset('images/logo.png') }}" alt="Logo">
@@ -577,9 +560,6 @@
                 </a>
             </li>
             <li>
-
-            </li>
-            <li>
                 <a href="#">
                     <i></i> Ayuda
                 </a>
@@ -596,14 +576,11 @@
         </div>
     </div>
     
-    <!-- Botón toggle para móvil -->
     <div class="menu-toggle" id="menuToggle">
         ☰ Menú
     </div>
     
-    <!-- Contenido principal -->
     <div class="main-content">
-        <!-- Header con logo y título -->
         <div class="content-header">
             <div class="logo-container">
                 <img src="{{ asset('images/logo.png') }}" alt="Logo">
@@ -617,7 +594,6 @@
         <div class="container-custom">
             <h2>Consulta de Documentos - Solo Visualización</h2>
             
-            <!-- Información del usuario -->
             @if(auth()->check())
             <div class="user-info">
                 <p><strong>Usuario:</strong> <span>{{ auth()->user()->name }}</span></p>
@@ -631,7 +607,6 @@
                 </div>
             @endif
 
-            <!-- FORMULARIO DE BÚSQUEDA -->
             <form method="POST" action="{{ route('solo_vista.buscar') }}" id="busquedaForm">
                 @csrf
                 
@@ -651,13 +626,11 @@
 
                 <div class="form-group">
                     <label for="cedulas_multiple">Cédulas múltiples</label>
-
-<textarea 
-    id="cedulas_multiple" 
-    name="cedulas_multiple" 
-    rows="3" 
-    placeholder="Ej:&#10;12345678&#10;87654321&#10;11122233">{{ old('cedulas_multiple') }}</textarea>
-
+                    <textarea 
+                        id="cedulas_multiple" 
+                        name="cedulas_multiple" 
+                        rows="3" 
+                        placeholder="Ej:&#10;12345678&#10;87654321&#10;11122233">{{ old('cedulas_multiple') }}</textarea>
                     <small class="text-muted">Una cédula por línea</small>
                 </div>
 
@@ -668,18 +641,19 @@
                 </div>
             </form>
 
-            <!-- RESULTADOS -->
             @if(isset($resultados) && !empty($resultados))
                 <div class="resultados-container">
                     @foreach($resultados as $cedula => $documentos)
-                        @php $primerDoc = $documentos->first(); @endphp
+                        @php 
+                            $primerDoc = $documentos->first();
+                            $cedulaActual = $cedula;
+                        @endphp
                         <div class="resultado-card">
                             <div class="resultado-header">
-                                <span class="badge-cedula">Cédula: {{ $cedula }}</span>
+                                <span class="badge-cedula">Cédula: {{ $cedulaActual }}</span>
                                 <span class="badge-count">{{ count($documentos) }} documento(s)</span>
                             </div>
                             
-                            <!-- Grid con todos los campos -->
                             <div class="info-grid">
                                 <div class="info-item">
                                     <label>Nombres y Apellidos</label>
@@ -707,26 +681,23 @@
                                 </div>
                             </div>
                             
-@php
-    $cedulaActual = $cedula; // Asegurar que la variable existe
-@endphp
-
-@if(count($documentos) > 1)
-    <div class="alert-info">
-         Se encontraron {{ count($documentos) }} documentos. Se mostrarán fusionados en una sola vista.
-    </div>
-    
-    <form method="POST" action="{{ route('solo_vista.ver.fusionados', ['cedula' => $cedulaActual]) }}" target="_blank">
-        @csrf
-        <button type="submit" class="view-btn" style="width: 100%;">
-            Ver {{ count($documentos) }} documentos fusionados
-        </button>
-    </form>
-@else
-    <a href="{{ route('solo_vista.ver.documentos', ['cedula' => $cedulaActual]) }}" target="_blank" class="view-btn" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
-        Ver {{ count($documentos) }} documento(s)
-    </a>
-@endif
+                            @if(count($documentos) > 1)
+                                <div class="alert-info">
+                                    ℹ️ Se encontraron {{ count($documentos) }} documentos. Se mostrarán fusionados en una sola vista.
+                                </div>
+                                
+                                <form method="POST" action="{{ route('solo_vista.ver.fusionados', ['cedula' => $cedulaActual]) }}" target="_blank">
+                                    @csrf
+                                    <button type="submit" class="view-btn" style="width: 100%;">
+                                        Ver {{ count($documentos) }} documentos fusionados
+                                    </button>
+                                </form>
+                            @else
+                                <a href="{{ route('solo_vista.ver.documentos', ['cedula' => $cedulaActual]) }}" target="_blank" class="view-btn" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
+                                    Ver {{ count($documentos) }} documento(s)
+                                </a>
+                            @endif
+                            
                             <ul class="documentos-lista">
                                 @foreach($documentos as $doc)
                                     <li>
@@ -740,7 +711,7 @@
                 </div>
             @elseif(isset($resultados))
                 <div class="mensaje warning">
-                     No se encontraron documentos para las cédulas ingresadas.
+                    No se encontraron documentos para las cédulas ingresadas.
                 </div>
             @endif
 
@@ -752,7 +723,22 @@
 </div>
 
 <script>
+const menuToggle = document.getElementById('menuToggle');
+const sidebar = document.getElementById('sidebar');
 
+if (menuToggle) {
+    menuToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('open');
+    });
+}
+
+document.addEventListener('click', function(event) {
+    if (window.innerWidth <= 768) {
+        if (!sidebar.contains(event.target) && !menuToggle.contains(event.target)) {
+            sidebar.classList.remove('open');
+        }
+    }
+});
 </script>
 </body>
 </html>
