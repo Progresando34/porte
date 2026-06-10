@@ -678,22 +678,22 @@
                                 </div>
                             </div>
                             
-                            @if(count($documentos) > 1)
-                                <div class="alert-info">
-                                    Se encontraron {{ count($documentos) }} documentos. Se mostrarán fusionados en una sola vista.
-                                </div>
-                                
-                                <form method="POST" action="{{ route('solo_vista.ver.fusionados', ['cedula' => $cedula]) }}" target="_blank">
-                                    @csrf
-                                    <button type="submit" class="view-btn" style="width: 100%;">
-                                        Ver {{ count($documentos) }} documentos fusionados
-                                    </button>
-                                </form>
-                            @else
-                                <a href="{{ route('solo_vista.ver.documentos', ['cedula' => $cedula]) }}" target="_blank" class="view-btn" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
-                                    Ver {{ count($documentos) }} documento(s)
-                                </a>
-                            @endif
+@if(count($documentos) > 1)
+    <div class="alert-info">
+        Se encontraron {{ count($documentos) }} documentos. Se mostrarán fusionados en una sola vista.
+    </div>
+    
+    <form method="POST" action="{{ url('/solo-vista/ver-fusionados/' . $cedula) }}" target="_blank">
+        @csrf
+        <button type="submit" class="view-btn" style="width: 100%;">
+            Ver {{ count($documentos) }} documentos fusionados
+        </button>
+    </form>
+@else
+    <a href="{{ url('/solo-vista/ver-documentos/' . $cedula) }}" target="_blank" class="view-btn" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
+        Ver {{ count($documentos) }} documento(s)
+    </a>
+@endif
                             
                             <ul class="documentos-lista">
                                 @foreach($documentos as $doc)
