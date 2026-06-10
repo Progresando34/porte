@@ -1,4 +1,5 @@
-{{-- resources/views/certificados_e/solo_vista/index.blade.php --}}
+
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -167,6 +168,11 @@
             border-bottom: 2px solid #eaeaea;
         }
         
+        h2::before {
+            content: '⚠️ ';
+            font-size: 1.2em;
+        }
+        
         /* Información del usuario */
         .user-info {
             background: linear-gradient(to right, #ffffff, #ffffff);
@@ -324,9 +330,13 @@
         }
         
         .view-btn:hover {
-            background: #218838;
+            background: #bbffca;
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .view-btn::before {
+            content: '👁️';
         }
         
         /* Resultados */
@@ -408,36 +418,6 @@
             font-size: 0.8rem;
         }
         
-        /* Grid de información */
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: white;
-            border-radius: 10px;
-        }
-        
-        .info-item {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 8px;
-        }
-        
-        .info-item label {
-            font-size: 0.75rem;
-            color: #6c757d;
-            margin-bottom: 5px;
-        }
-        
-        .info-item .value {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #333;
-            word-break: break-word;
-        }
-        
         /* Mensajes */
         .mensaje {
             padding: 15px;
@@ -461,7 +441,7 @@
         
         .mensaje.error, .mensaje.warning {
             background: #f8d7da;
-            color: #721c24;
+            color: #0c6800;
             border: 1px solid #f5c6cb;
         }
         
@@ -592,7 +572,7 @@
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <a href="#" onclick="event.preventDefault(); this.closest('form').submit();">
-                    <i></i> Cerrar Sesión
+                    <i></i>Cerrar Sesión
                 </a>
             </form>
         </div>
@@ -628,7 +608,7 @@
             @endif
 
             @if(session('mensaje'))
-                <div class="mensaje {{ str_contains(session('mensaje'), 'No') ? 'warning' : 'success' }}">
+                <div class="mensaje {{ str_contains(session('mensaje'), 'No') ? 'error' : 'success' }}">
                     {{ session('mensaje') }}
                 </div>
             @endif
@@ -669,75 +649,51 @@
             </form>
 
             <!-- RESULTADOS -->
-            @if(isset($resultados) && !empty($resultados))
+            @if(isset($resultados))
                 <div class="resultados-container">
-                    @foreach($resultados as $cedula => $documentos)
-                        @php $primerDoc = $documentos->first(); @endphp
+                    @forelse($resultados as $cedula => $documentos)
                         <div class="resultado-card">
                             <div class="resultado-header">
                                 <span class="badge-cedula">Cédula: {{ $cedula }}</span>
                                 <span class="badge-count">{{ count($documentos) }} documento(s)</span>
                             </div>
                             
-                            <!-- Grid con todos los campos -->
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <label>Nombres y Apellidos</label>
-                                    <div class="value">{{ $primerDoc->nombre ?? 'N/A' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <label>Fecha</label>
-                                    <div class="value">{{ $primerDoc->fecha ? date('d/m/Y', strtotime($primerDoc->fecha)) : 'N/A' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <label>Misión</label>
-                                    <div class="value">{{ $primerDoc->mision ?? 'N/A' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <label>NIT Empresa</label>
-                                    <div class="value">{{ $primerDoc->nit_empresa ?? 'N/A' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <label>Nombre Empresa</label>
-                                    <div class="value">{{ $primerDoc->nombre_empresa ?? 'N/A' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <label>Misión Empresa</label>
-                                    <div class="value">{{ $primerDoc->mision_empresa ?? 'N/A' }}</div>
-                                </div>
-                            </div>
-                            
                             @if(count($documentos) > 1)
                                 <div class="alert-info">
-                                    ℹ️ Se encontraron {{ count($documentos) }} documentos. Se mostrarán fusionados en una sola vista.
+                                    Se encontraron {{ count($documentos) }} documentos. Se mostrarán fusionados en una sola vista.
                                 </div>
                                 
                                 <form method="POST" action="{{ route('solo_vista.ver.fusionados', $cedula) }}" target="_blank">
                                     @csrf
                                     <button type="submit" class="view-btn" style="width: 100%;">
-                                        👁️ Ver {{ count($documentos) }} documentos fusionados
+                                        Ver {{ count($documentos) }} documentos fusionados
                                     </button>
                                 </form>
-@else
-    @php $doc = $documentos[0]; @endphp
-    <a href="{{ route('solo_vista.ver.documentos', $cedula) }}" target="_blank" class="view-btn" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
-        👁️ Ver {{ count($documentos) }} documento(s)
-    </a>
-@endif
+                            @else
+                                @php $doc = $documentos[0]; @endphp
+                                <form method="POST" action="{{ route('solo_vista.ver.unico', $doc->id) }}" target="_blank">
+                                    @csrf
+                                    <input type="hidden" name="origen" value="{{ $doc->origen }}">
+                                    <button type="submit" class="view-btn" style="width: 100%;">
+                                        Ver documento
+                                    </button>
+                                </form>
+                            @endif
+                            
                             <ul class="documentos-lista">
                                 @foreach($documentos as $doc)
                                     <li>
-                                        <strong>{{ $doc->mision ?? 'Documento sin misión' }}</strong>
-                                        <small>Fecha: {{ $doc->fecha ? date('d/m/Y', strtotime($doc->fecha)) : 'N/A' }}</small>
+                                        <strong>{{ $doc->nombre_archivo }}</strong>
+                                        <small>{{ $doc->descripcion }} - {{ $doc->fecha }}</small>
                                     </li>
                                 @endforeach
                             </ul>
                         </div>
-                    @endforeach
-                </div>
-            @elseif(isset($resultados))
-                <div class="mensaje warning">
-                    ⚠️ No se encontraron documentos para las cédulas ingresadas.
+                    @empty
+                        <div class="mensaje warning">
+                            No se encontraron documentos para las cédulas ingresadas.
+                        </div>
+                    @endforelse
                 </div>
             @endif
 
@@ -780,12 +736,14 @@ document.getElementById('busquedaForm')?.addEventListener('submit', function(e) 
 // Validar que al menos haya una cédula
 document.getElementById('busquedaForm')?.addEventListener('submit', function(e) {
     const cedulaSimple = document.getElementById('cedula').value.trim();
-    const cedulasMultiples = document.getElementById('cedulas_multiple');
+    const cedulasMultiples = document.querySelectorAll('#cedulas_multiple');
     let hasValue = false;
     
     if (cedulaSimple) hasValue = true;
     
-    if (cedulasMultiples && cedulasMultiples.value.trim()) hasValue = true;
+    cedulasMultiples.forEach(textarea => {
+        if (textarea.value.trim()) hasValue = true;
+    });
     
     if (!hasValue) {
         e.preventDefault();
