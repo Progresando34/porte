@@ -712,12 +712,12 @@
                                     ℹ️ Se encontraron {{ count($documentos) }} documentos. Se mostrarán fusionados en una sola vista.
                                 </div>
                                 
-                                <form method="POST" action="{{ route('solo_vista.ver.fusionados', $cedula) }}" target="_blank">
-                                    @csrf
-                                    <button type="submit" class="view-btn" style="width: 100%;">
-                                        👁️ Ver {{ count($documentos) }} documentos fusionados
-                                    </button>
-                                </form>
+<a href="{{ route('solo_vista.ver.fusionados', $cedula) }}"
+   target="_blank"
+   class="view-btn"
+   style="width:100%;display:block;text-align:center;text-decoration:none;">
+   👁️ Ver {{ count($documentos) }} documentos fusionados
+</a>
 @else
     @php $doc = $documentos[0]; @endphp
     <a href="{{ route('solo_vista.ver.documentos', $cedula) }}" target="_blank" class="view-btn" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
