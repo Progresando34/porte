@@ -271,3 +271,17 @@ Route::get('/debug-rutas-solo', function() {
     }
     return $rutas;
 });
+
+Route::get('/debug-ver-rutas', function() {
+    $rutas = [];
+    foreach (Route::getRoutes() as $ruta) {
+        if (str_contains($ruta->uri(), 'solo-vista/buscar')) {
+            $rutas[] = [
+                'uri' => $ruta->uri(),
+                'methods' => $ruta->methods(),
+                'action' => $ruta->getActionName()
+            ];
+        }
+    }
+    return $rutas;
+});
