@@ -103,7 +103,8 @@ Route::resource('trabajadores', TrabajadorController::class);
 // ========== RUTAS PARA SOLO VISUALIZACIÓN (USUARIO ESPECIAL) ==========
 Route::prefix('solo-vista')->middleware('auth')->group(function () {
     Route::get('/', [SoloVistaController::class, 'index'])->name('solo_vista.index');
-    Route::post('/buscar', [SoloVistaController::class, 'buscar'])->name('solo_vista.buscar');
+    //Route::post('/buscar', [SoloVistaController::class, 'buscar'])->name('solo_vista.buscar');
+    Route::match(['GET', 'POST'], '/buscar', [SoloVistaController::class, 'buscar'])->name('solo_vista.buscar');
     Route::get('/ver-documentos/{cedula}', [SoloVistaController::class, 'verDocumentos'])->name('solo_vista.ver.documentos');
     Route::get('/ver-pdf/{id}', [SoloVistaController::class, 'verPdf'])->name('solo_vista.ver.pdf');
     Route::get('/ver-fusionados/{cedula}', [SoloVistaController::class, 'verFusionados'])->name('solo_vista.ver.fusionados');
