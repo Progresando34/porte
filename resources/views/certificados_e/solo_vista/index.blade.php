@@ -644,13 +644,10 @@
             @if(isset($resultados) && !empty($resultados))
                 <div class="resultados-container">
                     @foreach($resultados as $cedula => $documentos)
-                        @php 
-                            $primerDoc = $documentos->first();
-                            $cedulaActual = $cedula;
-                        @endphp
+                        @php $primerDoc = $documentos->first(); @endphp
                         <div class="resultado-card">
                             <div class="resultado-header">
-                                <span class="badge-cedula">Cédula: {{ $cedulaActual }}</span>
+                                <span class="badge-cedula">Cédula: {{ $cedula }}</span>
                                 <span class="badge-count">{{ count($documentos) }} documento(s)</span>
                             </div>
                             
@@ -686,14 +683,14 @@
                                     Se encontraron {{ count($documentos) }} documentos. Se mostrarán fusionados en una sola vista.
                                 </div>
                                 
-                                <form method="POST" action="{{ route('solo_vista.ver.fusionados', ['cedula' => $cedulaActual]) }}" target="_blank">
+                                <form method="POST" action="{{ route('solo_vista.ver.fusionados', ['cedula' => $cedula]) }}" target="_blank">
                                     @csrf
                                     <button type="submit" class="view-btn" style="width: 100%;">
                                         Ver {{ count($documentos) }} documentos fusionados
                                     </button>
                                 </form>
                             @else
-                                <a href="{{ route('solo_vista.ver.documentos', ['cedula' => $cedulaActual]) }}" target="_blank" class="view-btn" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
+                                <a href="{{ route('solo_vista.ver.documentos', ['cedula' => $cedula]) }}" target="_blank" class="view-btn" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
                                     Ver {{ count($documentos) }} documento(s)
                                 </a>
                             @endif
