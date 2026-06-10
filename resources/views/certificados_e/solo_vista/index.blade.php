@@ -715,7 +715,7 @@
                                 <form method="POST" action="{{ route('solo_vista.ver.fusionados', $cedula) }}" target="_blank">
                                     @csrf
                                     <button type="submit" class="view-btn" style="width: 100%;">
-                                         Ver {{ count($documentos) }} documentos fusionados
+                                        👁️ Ver {{ count($documentos) }} documentos fusionados
                                     </button>
                                 </form>
 @else
@@ -768,23 +768,34 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// SOLO UN event listener para el formulario
+// Prevenir envío múltiple del formulario
+document.getElementById('busquedaForm')?.addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading"></span> Buscando...';
+    }
+});
+
+// Validar que al menos haya una cédula
 document.getElementById('busquedaForm')?.addEventListener('submit', function(e) {
     const cedulaSimple = document.getElementById('cedula').value.trim();
     const cedulasMultiples = document.getElementById('cedulas_multiple');
     let hasValue = false;
     
     if (cedulaSimple) hasValue = true;
+    
     if (cedulasMultiples && cedulasMultiples.value.trim()) hasValue = true;
     
     if (!hasValue) {
         e.preventDefault();
         alert('Por favor ingrese al menos una cédula para buscar');
-        return false;
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '🔍 Buscar Documentos';
+        }
     }
-    
-
-    return true;
 });
 </script>
 </body>
