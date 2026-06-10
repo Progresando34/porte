@@ -77,17 +77,18 @@ class SoloVistaController extends Controller
                 $cedulas[] = trim($request->cedula);
             }
             
-            if ($request->filled('cedulas_multiple')) {
-                foreach ($request->cedulas_multiple as $linea) {
-                    $cedulasArray = explode("\n", $linea);
-                    foreach ($cedulasArray as $ced) {
-                        $cedula = trim($ced);
-                        if (!empty($cedula)) {
-                            $cedulas[] = $cedula;
-                        }
-                    }
-                }
+if ($request->filled('cedulas_multiple')) {
+    $texto = trim($request->cedulas_multiple);
+    if (!empty($texto)) {
+        $lineas = explode("\n", $texto);
+        foreach ($lineas as $linea) {
+            $cedula = trim($linea);
+            if (!empty($cedula)) {
+                $cedulas[] = $cedula;
             }
+        }
+    }
+}
             
             $cedulas = array_unique($cedulas);
             
