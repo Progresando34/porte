@@ -101,7 +101,7 @@ Route::resource('trabajadores', TrabajadorController::class);
     Route::post('/certificados', [CertificadoController::class, 'store'])->name('certificados.store');
 
 // ========== RUTAS PARA SOLO VISUALIZACIÓN (USUARIO ESPECIAL) ==========
-Route::prefix('solo-vista')->middleware('auth')->group(function () {
+Route::prefix('solo-vista')->group(function () {
     Route::get('/', [SoloVistaController::class, 'index'])->name('solo_vista.index');
     Route::any('/buscar', [SoloVistaController::class, 'buscar'])->name('solo_vista.buscar');
     Route::get('/ver-documentos/{cedula}', [SoloVistaController::class, 'verDocumentos'])->name('solo_vista.ver.documentos');
