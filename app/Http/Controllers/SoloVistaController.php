@@ -54,8 +54,21 @@ class SoloVistaController extends Controller
      */
 public function buscar(Request $request)
 {
-    // Mostrar lo que llega
-    dd($request->all());
+    $cedula = $request->cedula;
+    
+    // Buscar en la base de datos
+    $resultados = CitaRecibida::where('cedula', 'LIKE', "%{$cedula}%")->get();
+    
+    // Verificar si encontró algo
+    if ($resultados->isEmpty()) {
+        return redirect()->route('solo_vista.index')->with('mensaje', "No se encontraron documentos para la cédula: {$cedula}");
+    }
+    
+    // Formatear resultados
+    $resultados = [$cedula => $resultados];
+    $prefijosPermitidos = $this->getUserAllowedPrefixes();
+    
+    return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
 }
     
     /**
