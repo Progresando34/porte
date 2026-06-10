@@ -249,7 +249,7 @@ public function recibirArchivos(Request $request)
                     $prefijo = strtoupper($matches[1]);
                     $fechaArchivo = $matches[2];
                     
-                    // Validar fecha >= 20260514
+                 
                     if ($fechaArchivo < '20260514') {
                         Log::info("Archivo omitido por fecha: {$nombreArchivo} (fecha: {$fechaArchivo})");
                         continue;
