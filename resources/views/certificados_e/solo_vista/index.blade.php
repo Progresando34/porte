@@ -715,7 +715,7 @@
                                 <form method="POST" action="{{ route('solo_vista.ver.fusionados', $cedula) }}" target="_blank">
                                     @csrf
                                     <button type="submit" class="view-btn" style="width: 100%;">
-                                        👁️ Ver {{ count($documentos) }} documentos fusionados
+                                         Ver {{ count($documentos) }} documentos fusionados
                                     </button>
                                 </form>
 @else
