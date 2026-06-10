@@ -721,7 +721,7 @@
 @else
     @php $doc = $documentos[0]; @endphp
     <a href="{{ route('solo_vista.ver.documentos', $cedula) }}" target="_blank" class="view-btn" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
-        👁️ Ver {{ count($documentos) }} documento(s)
+         Ver {{ count($documentos) }} documento(s)
     </a>
 @endif
                             <ul class="documentos-lista">
