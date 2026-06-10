@@ -23,7 +23,7 @@ Route::post('/importar-citas', function(Request $request) {
                 'nombre' => $cita['nombre'] ?? '',
                 'fecha' => $cita['fecha'] ?? null,
                 'nit_empresa' => $cita['empresa'] ?? null,
-                'nombre_empresa' => $cita['nombre_empresa'] ?? '',  // ← CAMPO REQUERIDO
+                'nombre_empresa' => $cita['nombre_empresa'] ?? '', 
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
