@@ -52,26 +52,12 @@ class SoloVistaController extends Controller
      */
 public function buscar(Request $request)
 {
-    // 🔥 IMPORTANTE: SI ES GET PERO TIENE DATOS, PROCESAR COMO POST
-    if ($request->isMethod('get') && ($request->has('cedula') || $request->has('cedulas_multiple'))) {
-        // Log para depuración
-        Log::info('Procesando GET con datos como si fuera POST', $request->all());
-        // No redirigir, continuar con el procesamiento
-    }
-    // Solo redirigir si es GET sin datos (acceso directo a la URL)
-    elseif ($request->isMethod('get')) {
-        Log::warning('Acceso GET directo a /buscar sin datos');
-        return redirect()->route('solo_vista.index')
-            ->with('mensaje', '⚠️ Por favor use el formulario de búsqueda');
-    }
-    
-    // ========== PROCESAMIENTO NORMAL (funciona para POST y GET con datos) ==========
     try {
-        // Validar los datos (funciona con GET y POST)
+        // Obtener datos (funciona con GET y POST)
         $cedula = $request->input('cedula');
         $cedulasMultiple = $request->input('cedulas_multiple');
         
-        Log::info('Datos recibidos', [
+        \Illuminate\Support\Facades\Log::info('BÚSQUEDA - Datos recibidos', [
             'cedula' => $cedula,
             'cedulas_multiple' => $cedulasMultiple,
             'method' => $request->method()
@@ -97,7 +83,7 @@ public function buscar(Request $request)
         
         $cedulas = array_unique($cedulas);
         
-        Log::info('Cédulas a buscar', ['cedulas' => $cedulas]);
+        \Illuminate\Support\Facades\Log::info('BÚSQUEDA - Cédulas a buscar', ['cedulas' => $cedulas]);
         
         if (empty($cedulas)) {
             return redirect()->route('solo_vista.index')
@@ -111,8 +97,8 @@ public function buscar(Request $request)
                 ->orderBy('fecha', 'desc')
                 ->get();
             
-            Log::info("Resultados para cédula {$cedulaBuscar}", [
-                'cantidad' => $documentos->count()
+            \Illuminate\Support\Facades\Log::info("BÚSQUEDA - Resultados para {$cedulaBuscar}", [
+                'encontrados' => $documentos->count()
             ]);
             
             if ($documentos->count() > 0) {
@@ -122,7 +108,7 @@ public function buscar(Request $request)
         
         if (empty($resultados)) {
             return redirect()->route('solo_vista.index')
-                ->with('mensaje', '⚠️ No se encontraron documentos para las cédulas ingresadas: ' . implode(', ', $cedulas));
+                ->with('mensaje', '⚠️ No se encontraron documentos para: ' . implode(', ', $cedulas));
         }
         
         $prefijosPermitidos = $this->getUserAllowedPrefixes();
@@ -130,9 +116,7 @@ public function buscar(Request $request)
         return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
         
     } catch (\Exception $e) {
-        Log::error('Error en búsqueda: ' . $e->getMessage(), [
-            'trace' => $e->getTraceAsString()
-        ]);
+        \Illuminate\Support\Facades\Log::error('BÚSQUEDA - Error: ' . $e->getMessage());
         return redirect()->route('solo_vista.index')
             ->with('mensaje', '❌ Error al buscar: ' . $e->getMessage());
     }
