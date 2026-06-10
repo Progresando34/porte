@@ -96,7 +96,7 @@ Route::resource('trabajadores', TrabajadorController::class);
     Route::get('/armas/docs', fn() => view('armas.docs'))->name('armas.docs');
     Route::get('/armas/licita', fn() => view('armas.licita'))->name('armas.licita');
     
-    // Rutas para certificados
+   
     Route::get('/certificados/crear', [CertificadoController::class, 'create'])->name('certificados.create');
     Route::post('/certificados', [CertificadoController::class, 'store'])->name('certificados.store');
 
