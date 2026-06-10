@@ -52,138 +52,89 @@ class SoloVistaController extends Controller
      */
 public function buscar(Request $request)
 {
-    // ========== DEPURACIÓN: Registrar toda la petición ==========
-    \Illuminate\Support\Facades\Log::info('=== BÚSQUEDA INICIADA ===', [
-        'method' => $request->method(),
-        'all_input' => $request->all(),
-        'headers' => [
-            'content-type' => $request->header('content-type'),
-            'referer' => $request->header('referer'),
-            'user-agent' => $request->header('user-agent')
-        ],
-        'ip' => $request->ip()
-    ]);
+    // 🔥 IMPORTANTE: SI ES GET PERO TIENE DATOS, PROCESAR COMO POST
+    if ($request->isMethod('get') && ($request->has('cedula') || $request->has('cedulas_multiple'))) {
+        // Log para depuración
+        Log::info('Procesando GET con datos como si fuera POST', $request->all());
+        // No redirigir, continuar con el procesamiento
+    }
+    // Solo redirigir si es GET sin datos (acceso directo a la URL)
+    elseif ($request->isMethod('get')) {
+        Log::warning('Acceso GET directo a /buscar sin datos');
+        return redirect()->route('solo_vista.index')
+            ->with('mensaje', '⚠️ Por favor use el formulario de búsqueda');
+    }
     
+    // ========== PROCESAMIENTO NORMAL (funciona para POST y GET con datos) ==========
     try {
-        // ========== DEPURACIÓN: Verificar si es GET ==========
-        if ($request->isMethod('get')) {
-            \Illuminate\Support\Facades\Log::warning('⚠️ PETICIÓN GET RECIBIDA', [
-                'query_string' => $request->getQueryString(),
-                'all_query' => $request->query()
-            ]);
-            
-            // Si tiene datos en la URL, procesarlos igual
-            if ($request->has('cedula') || $request->has('cedulas_multiple')) {
-                \Illuminate\Support\Facades\Log::info('🔄 Convirtiendo GET a POST para procesar');
-                $request->setMethod('POST');
-            } else {
-                // Redirigir solo si es GET sin datos
-                return redirect()->route('solo_vista.index')
-                    ->with('mensaje', '⚠️ Por favor use el formulario de búsqueda');
-            }
-        }
+        // Validar los datos (funciona con GET y POST)
+        $cedula = $request->input('cedula');
+        $cedulasMultiple = $request->input('cedulas_multiple');
         
-        // Validación
-        $validated = $request->validate([
-            'cedula' => 'nullable|string',
-            'cedulas_multiple' => 'nullable|array',
+        Log::info('Datos recibidos', [
+            'cedula' => $cedula,
+            'cedulas_multiple' => $cedulasMultiple,
+            'method' => $request->method()
         ]);
         
-        \Illuminate\Support\Facades\Log::info('✅ Validación pasada', $validated);
-        
-        // Procesar cédulas
         $cedulas = [];
         
-        if ($request->filled('cedula')) {
-            $cedulas[] = trim($request->cedula);
-            \Illuminate\Support\Facades\Log::info('📝 Cédula individual', ['cedula' => $request->cedula]);
+        if (!empty($cedula)) {
+            $cedulas[] = trim($cedula);
         }
         
-        if ($request->filled('cedulas_multiple')) {
-            \Illuminate\Support\Facades\Log::info('📝 Cédulas múltiples recibidas', [
-                'raw' => $request->cedulas_multiple
-            ]);
-            
-            foreach ($request->cedulas_multiple as $linea) {
+        if (!empty($cedulasMultiple) && is_array($cedulasMultiple)) {
+            foreach ($cedulasMultiple as $linea) {
                 $cedulasArray = explode("\n", $linea);
                 foreach ($cedulasArray as $ced) {
-                    $cedula = trim($ced);
-                    if (!empty($cedula)) {
-                        $cedulas[] = $cedula;
+                    $cedulaItem = trim($ced);
+                    if (!empty($cedulaItem)) {
+                        $cedulas[] = $cedulaItem;
                     }
                 }
             }
-            \Illuminate\Support\Facades\Log::info('📝 Cédulas procesadas desde múltiples', ['cedulas' => $cedulas]);
         }
         
         $cedulas = array_unique($cedulas);
         
-        \Illuminate\Support\Facades\Log::info('📋 Lista final de cédulas a buscar', [
-            'total' => count($cedulas),
-            'cedulas' => $cedulas
-        ]);
+        Log::info('Cédulas a buscar', ['cedulas' => $cedulas]);
         
         if (empty($cedulas)) {
-            \Illuminate\Support\Facades\Log::warning('❌ No hay cédulas para buscar');
-            return back()->with('mensaje', '⚠️ Por favor ingrese al menos una cédula');
+            return redirect()->route('solo_vista.index')
+                ->with('mensaje', '⚠️ Por favor ingrese al menos una cédula');
         }
         
-        // Buscar documentos
         $resultados = [];
         
-        foreach ($cedulas as $cedula) {
-            \Illuminate\Support\Facades\Log::info('🔍 Buscando cédula: ' . $cedula);
-            
-            $documentos = CitaRecibida::where('cedula', 'LIKE', "%{$cedula}%")
+        foreach ($cedulas as $cedulaBuscar) {
+            $documentos = CitaRecibida::where('cedula', 'LIKE', "%{$cedulaBuscar}%")
                 ->orderBy('fecha', 'desc')
                 ->get();
             
-            \Illuminate\Support\Facades\Log::info('📊 Resultados para cédula ' . $cedula, [
-                'encontrados' => $documentos->count(),
-                'ids' => $documentos->pluck('id')->toArray()
+            Log::info("Resultados para cédula {$cedulaBuscar}", [
+                'cantidad' => $documentos->count()
             ]);
             
             if ($documentos->count() > 0) {
-                $resultados[$cedula] = $documentos;
+                $resultados[$cedulaBuscar] = $documentos;
             }
         }
         
-        // Verificar resultados
         if (empty($resultados)) {
-            \Illuminate\Support\Facades\Log::warning('❌ No se encontraron documentos para ninguna cédula', [
-                'cedulas_buscadas' => $cedulas
-            ]);
-            
-            return back()->with('mensaje', '⚠️ No se encontraron documentos para las cédulas ingresadas: ' . implode(', ', $cedulas));
+            return redirect()->route('solo_vista.index')
+                ->with('mensaje', '⚠️ No se encontraron documentos para las cédulas ingresadas: ' . implode(', ', $cedulas));
         }
-        
-        \Illuminate\Support\Facades\Log::info('✅ Búsqueda exitosa', [
-            'cedulas_encontradas' => array_keys($resultados),
-            'total_documentos' => collect($resultados)->sum(function($docs) { return $docs->count(); })
-        ]);
         
         $prefijosPermitidos = $this->getUserAllowedPrefixes();
         
-        \Illuminate\Support\Facades\Log::info('📄 Renderizando vista con resultados');
-        
         return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
         
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        \Illuminate\Support\Facades\Log::error('❌ Error de validación', [
-            'errors' => $e->errors(),
-            'input' => $request->all()
-        ]);
-        return back()->with('mensaje', '❌ Error de validación: ' . json_encode($e->errors()));
-        
     } catch (\Exception $e) {
-        \Illuminate\Support\Facades\Log::error('❌ Error inesperado en búsqueda', [
-            'message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
+        Log::error('Error en búsqueda: ' . $e->getMessage(), [
             'trace' => $e->getTraceAsString()
         ]);
-        
-        return back()->with('mensaje', '❌ Error al buscar: ' . $e->getMessage());
+        return redirect()->route('solo_vista.index')
+            ->with('mensaje', '❌ Error al buscar: ' . $e->getMessage());
     }
 }
     
