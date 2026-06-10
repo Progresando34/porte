@@ -653,11 +653,13 @@
 
                 <div class="form-group">
                     <label for="cedulas_multiple">Cédulas múltiples</label>
-                    <textarea 
-                        id="cedulas_multiple" 
-                        name="cedulas_multiple[]" 
-                        rows="3" 
-                        placeholder="Ej:&#10;12345678&#10;87654321&#10;11122233">{{ old('cedulas_multiple') ? implode("\n", old('cedulas_multiple')) : '' }}</textarea>
+
+<textarea 
+    id="cedulas_multiple" 
+    name="cedulas_multiple" 
+    rows="3" 
+    placeholder="Ej:&#10;12345678&#10;87654321&#10;11122233">{{ old('cedulas_multiple') }}</textarea>
+
                     <small class="text-muted">Una cédula por línea</small>
                 </div>
 

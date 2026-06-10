@@ -52,63 +52,11 @@ class SoloVistaController extends Controller
     /**
      * Busca documentos por cédula(s)
      */
-    public function buscar(Request $request)
-    {
-        try {
-            $request->validate([
-                'cedula' => 'nullable|string',
-                'cedulas_multiple' => 'nullable|array',
-            ]);
-
-            $cedulas = [];
-            
-            if ($request->filled('cedula')) {
-                $cedulas[] = trim($request->cedula);
-            }
-            
-            if ($request->filled('cedulas_multiple')) {
-                foreach ($request->cedulas_multiple as $linea) {
-                    $cedulasArray = explode("\n", $linea);
-                    foreach ($cedulasArray as $ced) {
-                        $cedula = trim($ced);
-                        if (!empty($cedula)) {
-                            $cedulas[] = $cedula;
-                        }
-                    }
-                }
-            }
-            
-            $cedulas = array_unique($cedulas);
-            
-            if (empty($cedulas)) {
-                return back()->with('mensaje', 'Por favor ingrese al menos una cédula');
-            }
-            
-            $resultados = [];
-            
-            foreach ($cedulas as $cedula) {
-                $documentos = CitaRecibida::where('cedula', 'LIKE', "%{$cedula}%")
-                    ->orderBy('fecha', 'desc')
-                    ->get();
-                
-                if ($documentos->count() > 0) {
-                    $resultados[$cedula] = $documentos;
-                }
-            }
-            
-            if (empty($resultados)) {
-                return back()->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas');
-            }
-            
-            $prefijosPermitidos = $this->getUserAllowedPrefixes();
-            
-            return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
-            
-        } catch (\Exception $e) {
-            Log::error('Error en búsqueda: ' . $e->getMessage());
-            return back()->with('mensaje', 'Error al buscar: ' . $e->getMessage());
-        }
-    }
+public function buscar(Request $request)
+{
+    // Mostrar lo que llega
+    dd($request->all());
+}
     
     /**
      * Ver TODOS los documentos (PDFs) de una cédula - FILTRADO POR PREFIJOS DEL USUARIO
