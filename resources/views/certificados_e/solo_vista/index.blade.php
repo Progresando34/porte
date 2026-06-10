@@ -634,7 +634,7 @@
             @endif
 
             <!-- FORMULARIO DE BÚSQUEDA -->
-            <form method="POST" action="{{ url('/solo-vista/debug') }}" id="busquedaForm">
+         <form method="POST" action="{{ route('solo_vista.buscar') }}" id="busquedaForm">
                 @csrf
                 
                 <div class="form-group">
