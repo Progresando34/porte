@@ -54,22 +54,30 @@ class SoloVistaController extends Controller
     }
     
     // 🔥 MÉTODO DE DEPURACIÓN - REEMPLAZA EL ANTERIOR
-    public function verDocumentos($cedula)
-    {
-        $ruta1 = storage_path('app/public/RESULTADOS/' . $cedula);
-        $ruta2 = 'Z:/Saips2/pdf/' . $cedula;
-        
-        $debug = [
-            'ruta_buscada_1' => $ruta1,
-            'existe_ruta_1' => is_dir($ruta1),
-            'archivos_ruta_1' => is_dir($ruta1) ? scandir($ruta1) : [],
-            'ruta_buscada_2' => $ruta2,
-            'existe_ruta_2' => is_dir($ruta2),
-            'archivos_ruta_2' => is_dir($ruta2) ? scandir($ruta2) : [],
+public function verDocumentos($cedula)
+{
+    // Posibles rutas donde podrían estar los archivos
+    $posiblesRutas = [
+        storage_path('app/public/RESULTADOS/' . $cedula),
+        'Z:/Saips2/pdf/' . $cedula,
+        'Z:/Saips2/pdf/' . $cedula . '/',
+        public_path('storage/RESULTADOS/' . $cedula),
+        storage_path('app/RESULTADOS/' . $cedula),
+        base_path('RESULTADOS/' . $cedula),
+    ];
+    
+    $resultados = [];
+    
+    foreach ($posiblesRutas as $ruta) {
+        $resultados[] = [
+            'ruta' => $ruta,
+            'existe' => is_dir($ruta),
+            'archivos' => is_dir($ruta) ? scandir($ruta) : []
         ];
-        
-        return response()->json($debug);
     }
+    
+    return response()->json($resultados);
+}
     
     public function verPdf($id, Request $request)
     {
