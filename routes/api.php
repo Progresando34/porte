@@ -58,7 +58,7 @@ Route::post('/perfil/crear', function(Request $request) {
             ], 400);
         }
         
-        // Buscar si ya existe
+        
         $profile = Profile::where('name', $name)->first();
         
         if (!$profile) {
