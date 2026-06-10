@@ -577,9 +577,7 @@
                 </a>
             </li>
             <li>
-                <a href="#">
-                    <i></i> Restricciones
-                </a>
+
             </li>
             <li>
                 <a href="#">
