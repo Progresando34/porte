@@ -257,5 +257,3 @@ Route::get('/debug-user-prefijos', function() {
         'total_prefijos' => $prefijos->count()
     ];
 });
-
-Route::any('/solo-vista/debug', [SoloVistaController::class, 'debug']);
