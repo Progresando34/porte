@@ -285,3 +285,7 @@ Route::get('/debug-ver-rutas', function() {
     }
     return $rutas;
 });
+
+Route::get('/test-solo-buscar', function() {
+    return 'La ruta funciona correctamente';
+});
