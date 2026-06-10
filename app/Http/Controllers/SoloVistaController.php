@@ -9,9 +9,6 @@ use Illuminate\Support\Facades\Log;
 
 class SoloVistaController extends Controller
 {
-    /**
-     * Obtiene los prefijos permitidos para el usuario logueado (visualizador)
-     */
     private function getUserAllowedPrefixes()
     {
         $user = auth()->user();
@@ -21,7 +18,6 @@ class SoloVistaController extends Controller
             return [];
         }
         
-        // Obtener los prefijos del usuario desde la relación
         $prefijos = $user->prefijos()->where('activo', true)->pluck('prefijo')->toArray();
         
         Log::info('Usuario ' . $user->name . ' tiene prefijos: ' . implode(', ', $prefijos));
@@ -29,176 +25,86 @@ class SoloVistaController extends Controller
         return $prefijos;
     }
     
-
     private function extraerPrefijo($nombreArchivo)
     {
-        // Busca letras al inicio del nombre (pueden ser 1 o más caracteres)
         preg_match('/^([A-Za-z]+)/', $nombreArchivo, $matches);
         return isset($matches[1]) ? strtoupper($matches[1]) : '';
     }
     
-    /**
-     * Muestra el panel principal de solo visualización
-     */
     public function index()
     {
         $prefijosPermitidos = $this->getUserAllowedPrefixes();
         return view('certificados_e.solo_vista.index', compact('prefijosPermitidos'));
     }
 
-    /**
-     * Busca documentos por cédula(s)
-     */
-public function buscar(Request $request)
-{
-    $cedula = $request->cedula;
-    
-    // Buscar en la base de datos
-    $resultados = CitaRecibida::where('cedula', 'LIKE', "%{$cedula}%")->get();
-    
-    // Verificar si encontró algo
-    if ($resultados->isEmpty()) {
-        return redirect()->route('solo_vista.index')->with('mensaje', "No se encontraron documentos para la cédula: {$cedula}");
-    }
-    
-    // Formatear resultados
-    $resultados = [$cedula => $resultados];
-    $prefijosPermitidos = $this->getUserAllowedPrefixes();
-    
-    return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
-}
-    
-    /**
-     * Ver TODOS los documentos (PDFs) de una cédula - FILTRADO POR PREFIJOS DEL USUARIO
-     */
-/**
- * Ver TODOS los documentos (PDFs) de una cédula - FILTRADO POR PREFIJOS DEL USUARIO
- */
-public function verDocumentos($cedula)
-{
-    try {
-        // Obtener prefijos permitidos del usuario (ya están en mayúsculas)
+    public function buscar(Request $request)
+    {
+        $cedula = $request->cedula;
+        
+        $resultados = CitaRecibida::where('cedula', 'LIKE', "%{$cedula}%")->get();
+        
+        if ($resultados->isEmpty()) {
+            return redirect()->route('solo_vista.index')->with('mensaje', "No se encontraron documentos para la cédula: {$cedula}");
+        }
+        
+        $resultados = [$cedula => $resultados];
         $prefijosPermitidos = $this->getUserAllowedPrefixes();
         
-        if (empty($prefijosPermitidos)) {
-            return back()->with('mensaje', 'No tiene prefijos asignados para visualizar documentos');
-        }
+        return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
+    }
+    
+    // 🔥 MÉTODO DE DEPURACIÓN - REEMPLAZA EL ANTERIOR
+    public function verDocumentos($cedula)
+    {
+        $ruta1 = storage_path('app/public/RESULTADOS/' . $cedula);
+        $ruta2 = 'Z:/Saips2/pdf/' . $cedula;
         
-        // Obtener las descripciones de los prefijos desde la base de datos
-        $descripcionPrefijos = \App\Models\Prefijo::whereIn('prefijo', $prefijosPermitidos)
-            ->pluck('descripcion', 'prefijo')
-            ->toArray();
+        $debug = [
+            'ruta_buscada_1' => $ruta1,
+            'existe_ruta_1' => is_dir($ruta1),
+            'archivos_ruta_1' => is_dir($ruta1) ? scandir($ruta1) : [],
+            'ruta_buscada_2' => $ruta2,
+            'existe_ruta_2' => is_dir($ruta2),
+            'archivos_ruta_2' => is_dir($ruta2) ? scandir($ruta2) : [],
+        ];
         
-        $cita = CitaRecibida::where('cedula', $cedula)->first();
-        
-        if (!$cita) {
-            return back()->with('mensaje', 'No se encontró registro para esta cédula');
-        }
-        
-        $carpeta = storage_path('app/public/RESULTADOS/' . $cedula);
-        $pdfs = [];
-        
-        if (is_dir($carpeta)) {
-            $archivos = glob($carpeta . '/*.pdf');
-            $archivos = array_merge($archivos, glob($carpeta . '/*.PDF'));
-            sort($archivos);
+        return response()->json($debug);
+    }
+    
+    public function verPdf($id, Request $request)
+    {
+        try {
+            $cita = CitaRecibida::findOrFail($id);
+            $nombreArchivo = $request->get('archivo');
             
-            foreach ($archivos as $archivo) {
-                $nombreArchivo = basename($archivo);
-                $prefijo = $this->extraerPrefijo($nombreArchivo);
-                $prefijo = strtoupper($prefijo);
-                
-                if (!empty($prefijo) && in_array($prefijo, $prefijosPermitidos)) {
-                    // Obtener la descripción del prefijo
-                    $descripcion = $descripcionPrefijos[$prefijo] ?? 'Sin descripción';
-                    
-                    $pdfs[] = [
-                        'nombre' => $nombreArchivo,
-                        'prefijo' => $prefijo,
-                        'descripcion' => $descripcion,
-                        'ruta' => $archivo,
-                        'fecha' => $cita->fecha,
-                        'mision' => $cita->mision,
-                        'empresa' => $cita->nombre_empresa
-                    ];
-                }
+            if (!$nombreArchivo) {
+                abort(404, 'No se especificó el archivo');
             }
+            
+            $prefijoArchivo = strtoupper($this->extraerPrefijo($nombreArchivo));
+            $prefijosPermitidos = $this->getUserAllowedPrefixes();
+            
+            if (!in_array($prefijoArchivo, $prefijosPermitidos)) {
+                abort(403, 'No tiene permiso para acceder a este documento (prefijo: ' . $prefijoArchivo . ')');
+            }
+            
+            $path = storage_path('app/public/RESULTADOS/' . $cita->cedula . '/' . $nombreArchivo);
+            
+            if (!file_exists($path)) {
+                abort(404, 'El archivo PDF no existe: ' . $path);
+            }
+            
+            return response()->file($path, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $nombreArchivo . '"'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error al ver PDF: ' . $e->getMessage());
+            abort(404, 'Error al cargar el PDF');
         }
-        
-        if (empty($pdfs)) {
-            $prefijosTexto = implode(', ', $prefijosPermitidos);
-            return back()->with('mensaje', "No se encontraron archivos PDF con los prefijos permitidos ({$prefijosTexto}) para esta cédula");
-        }
-        
-        return view('certificados_e.solo_vista.ver-documentos', compact('cita', 'pdfs', 'cedula'));
-        
-    } catch (\Exception $e) {
-        Log::error('Error al ver documentos: ' . $e->getMessage());
-        return back()->with('mensaje', 'Error al cargar los documentos: ' . $e->getMessage());
     }
-}
-
-public function verDocumentos($cedula)
-{
-    // DEPURACIÓN: Verificar rutas
-    $ruta1 = storage_path('app/public/RESULTADOS/' . $cedula);
-    $ruta2 = 'Z:/Saips2/pdf/' . $cedula;
     
-    $debug = [
-        'ruta_buscada_1' => $ruta1,
-        'existe_ruta_1' => is_dir($ruta1),
-        'archivos_ruta_1' => is_dir($ruta1) ? scandir($ruta1) : [],
-        'ruta_buscada_2' => $ruta2,
-        'existe_ruta_2' => is_dir($ruta2),
-        'archivos_ruta_2' => is_dir($ruta2) ? scandir($ruta2) : [],
-    ];
-    
-    return response()->json($debug);
-    
-    // Resto del código...
-}
-    
-    /**
-     * Ver PDF específico - CON VERIFICACIÓN DE PREFIJO
-     */
-public function verPdf($id, Request $request)
-{
-    try {
-        $cita = CitaRecibida::findOrFail($id);
-        $nombreArchivo = $request->get('archivo');
-        
-        if (!$nombreArchivo) {
-            abort(404, 'No se especificó el archivo');
-        }
-        
-        // Verificar permiso del prefijo (convertir a mayúsculas)
-        $prefijoArchivo = strtoupper($this->extraerPrefijo($nombreArchivo));
-        $prefijosPermitidos = $this->getUserAllowedPrefixes();
-        
-        if (!in_array($prefijoArchivo, $prefijosPermitidos)) {
-            abort(403, 'No tiene permiso para acceder a este documento (prefijo: ' . $prefijoArchivo . ')');
-        }
-        
-        $path = storage_path('app/public/RESULTADOS/' . $cita->cedula . '/' . $nombreArchivo);
-        
-        if (!file_exists($path)) {
-            abort(404, 'El archivo PDF no existe: ' . $path);
-        }
-        
-        return response()->file($path, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $nombreArchivo . '"'
-        ]);
-        
-    } catch (\Exception $e) {
-        Log::error('Error al ver PDF: ' . $e->getMessage());
-        abort(404, 'Error al cargar el PDF');
-    }
-}
-    
-    /**
-     * Ver documentos fusionados
-     */
     public function verFusionados($cedula)
     {
         try {
