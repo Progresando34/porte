@@ -713,7 +713,7 @@
 
 @if(count($documentos) > 1)
     <div class="alert-info">
-        ℹ️ Se encontraron {{ count($documentos) }} documentos. Se mostrarán fusionados en una sola vista.
+         Se encontraron {{ count($documentos) }} documentos. Se mostrarán fusionados en una sola vista.
     </div>
     
     <form method="POST" action="{{ route('solo_vista.ver.fusionados', ['cedula' => $cedulaActual]) }}" target="_blank">
