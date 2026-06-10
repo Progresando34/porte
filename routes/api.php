@@ -95,3 +95,5 @@ Route::prefix('resultados')->group(function () {
     Route::get('/descargar/{cedula}/{archivo}', [ResultadosController::class, 'descargarArchivo']);
     Route::get('/verificar/{cedula}', [ResultadosController::class, 'verificar']);
 });
+
+Route::get('/resultados/verificar/{cedula}', [ResultadosController::class, 'verificar']);
