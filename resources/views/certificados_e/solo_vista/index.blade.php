@@ -737,7 +737,7 @@
                 </div>
             @elseif(isset($resultados))
                 <div class="mensaje warning">
-                    ⚠️ No se encontraron documentos para las cédulas ingresadas.
+                    No se encontraron documentos para las cédulas ingresadas.
                 </div>
             @endif
 
