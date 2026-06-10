@@ -147,9 +147,7 @@ public function buscar(Request $request)
     }
 }
     
-    /**
-     * Ver TODOS los documentos (PDFs) de una cédula - FILTRADO POR PREFIJOS DEL USUARIO
-     */
+
 /**
  * Ver TODOS los documentos (PDFs) de una cédula - FILTRADO POR PREFIJOS DEL USUARIO
  */
