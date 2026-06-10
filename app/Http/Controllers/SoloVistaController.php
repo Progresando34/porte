@@ -49,6 +49,17 @@ class SoloVistaController extends Controller
         return view('certificados_e.solo_vista.index', compact('prefijosPermitidos'));
     }
 
+    public function debug(Request $request)
+{
+    return response()->json([
+        'method' => $request->method(),
+        'all_data' => $request->all(),
+        'headers' => $request->headers->all(),
+        'session' => session()->all(),
+        'url' => $request->fullUrl()
+    ]);
+}
+
     /**
      * Busca documentos por cédula(s)
      */
