@@ -53,7 +53,7 @@ class SoloVistaController extends Controller
         return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
     }
     
-    // 🔥 MÉTODO DE DEPURACIÓN - REEMPLAZA EL ANTERIOR
+    //  MÉTODO DE DEPURACIÓN - REEMPLAZA EL ANTERIOR
 public function verDocumentos($cedula)
 {
     // Posibles rutas donde podrían estar los archivos
