@@ -18,20 +18,39 @@ Route::post('/importar-citas', function(Request $request) {
     
     foreach ($citas as $index => $cita) {
         try {
-            $resultado = DB::table('citas_recibidas')->insert([
-                'cedula' => $cita['cedula'] ?? null,
-                'nombre' => $cita['nombre'] ?? '',
-                'fecha' => $cita['fecha'] ?? null,
-                'nit_empresa' => $cita['empresa'] ?? null,
-                'nombre_empresa' => $cita['nombre_empresa'] ?? '', 
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            // BUSCAR si ya existe la cita (para evitar duplicados)
+            $existe = DB::table('citas_recibidas')
+                ->where('cedula', $cita['cedula'] ?? null)
+                ->where('fecha', $cita['fecha'] ?? null)
+                ->exists();
             
-            if ($resultado) {
+            if ($existe) {
+                // Si ya existe, solo actualizamos los campos que faltan
+                DB::table('citas_recibidas')
+                    ->where('cedula', $cita['cedula'] ?? null)
+                    ->where('fecha', $cita['fecha'] ?? null)
+                    ->update([
+                        'nombre_empresa' => $cita['nombre_empresa'] ?? '',
+                        'mision' => $cita['mision'] ?? null,
+                        'mision_empresa' => $cita['mision_empresa'] ?? null,
+                        'updated_at' => now()
+                    ]);
                 $insertadas++;
             } else {
-                $errores[] = "Cita $index: Falló la inserción";
+                // Si no existe, insertar nuevo registro
+                DB::table('citas_recibidas')->insert([
+                    'cedula' => $cita['cedula'] ?? null,
+                    'nombre' => $cita['nombre'] ?? '',
+                    'fecha' => $cita['fecha'] ?? null,
+                    'nit_empresa' => $cita['empresa'] ?? null,
+                    'nombre_empresa' => $cita['nombre_empresa'] ?? '',
+                    'mision' => $cita['mision'] ?? null,
+                    'mision_empresa' => $cita['mision_empresa'] ?? null,
+                    'datos_completos' => json_encode($cita),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $insertadas++;
             }
         } catch (\Exception $e) {
             $errores[] = "Cita $index: " . $e->getMessage();
@@ -39,6 +58,7 @@ Route::post('/importar-citas', function(Request $request) {
     }
     
     return response()->json([
+        'success' => true,
         'insertadas' => $insertadas,
         'errores' => $errores,
         'total' => count($citas)
