@@ -133,7 +133,7 @@ Route::get('/sincronizar/pendientes/{nit}', [SincronizadorController::class, 'ob
 Route::post('/sincronizar/citas/importar', [SincronizadorController::class, 'importarCitas']);
 Route::post('/sincronizar/empresas/importar', [SincronizadorController::class, 'importarEmpresas']);
 
-// ENDPOINTS DE RESULTADOS
+
 Route::prefix('resultados')->group(function () {
     Route::get('/archivos/{cedula}', [ResultadosController::class, 'listarArchivos']);
     Route::get('/descargar/{cedula}/{archivo}', [ResultadosController::class, 'descargarArchivo']);
