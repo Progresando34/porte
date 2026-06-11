@@ -104,6 +104,30 @@ Route::post('/perfil/crear', function(Request $request) {
     }
 });
 
+Route::get('/empresa/nombre/{codigo}', function($codigo) {
+    try {
+        $empresa = DB::table('empresas')->where('codigo', $codigo)->first();
+        
+        if ($empresa && $empresa->nombre) {
+            return response()->json([
+                'success' => true,
+                'nombre' => $empresa->nombre
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'nombre' => ''
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'nombre' => '',
+            'error' => $e->getMessage()
+        ]);
+    }
+});
+
 Route::post('/sincronizar/archivos', [SincronizadorController::class, 'recibirArchivos']);
 Route::get('/sincronizar/pendientes/{nit}', [SincronizadorController::class, 'obtenerPendientes']);
 Route::post('/sincronizar/citas/importar', [SincronizadorController::class, 'importarCitas']);
