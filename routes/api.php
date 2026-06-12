@@ -141,3 +141,23 @@ Route::prefix('resultados')->group(function () {
 });
 
 Route::get('/resultados/verificar/{cedula}', [ResultadosController::class, 'verificar']);
+
+// Nueva ruta para obtener citas existentes
+Route::get('/citas/existentes', function() {
+    try {
+        $citas = DB::table('citas_recibidas')
+            ->select('cedula', 'fecha')
+            ->get();
+        
+        return response()->json([
+            'success' => true,
+            'total' => count($citas),
+            'citas' => $citas
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});
