@@ -161,3 +161,36 @@ Route::get('/citas/existentes', function() {
         ], 500);
     }
 });
+
+// Ruta para obtener TODAS las citas (sin importar carpeta_copiada)
+Route::get('/sincronizar/todas/{nit}', function($nit) {
+    try {
+        $citas = DB::table('citas_recibidas')
+            ->where('nit_empresa', $nit)
+            ->where('fecha', '>=', '2026-05-14')
+            ->get();
+        
+        $resultado = [];
+        foreach ($citas as $cita) {
+            $resultado[] = [
+                'cedula' => $cita->cedula,
+                'nombre' => $cita->nombre,
+                'fecha_cita' => $cita->fecha,
+                'mision' => $cita->mision ?? '',
+                'nit_empresa' => $nit,
+                'nombre_empresa' => $cita->nombre_empresa ?? '',
+                'mision_empresa' => $cita->mision_empresa ?? '',
+            ];
+        }
+        
+        return response()->json([
+            'success' => true,
+            'citas' => $resultado
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});
