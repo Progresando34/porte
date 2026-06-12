@@ -108,18 +108,7 @@
                     <div class="pdf-header">
                         <h3>
                             <span>
-                                @php
-                                    $descripciones = [
-                                        'a' => 'Certificado de aptitud',
-                                        'c' => 'Certificado laboral',
-                                        'ev' => 'Evaluación de puesto',
-                                        's' => 'Seguimiento',
-                                        'vis' => 'Visita domiciliaria',
-                                        'h' => 'Historia'
-                                    ];
-                                    $descripcion = $descripciones[$pdf['prefijo']] ?? 'Documento sin descripción';
-                                @endphp
-                                {{ $descripcion }}
+                                 {{ $pdf['descripcion'] ?: 'Documento sin descripción' }}
                             </span>
                             <span>
                                 <span class="badge-prefijo">Prefijo: {{ strtoupper($pdf['prefijo']) }}</span>
