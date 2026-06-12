@@ -648,7 +648,7 @@
             </a>
         @else
             <a href="{{ route('documento.ver', ['id' => $archivo->id]) }}" target="_blank" class="action-btn view-btn">
-                <span>👁️</span> Ver
+                <span></span> Ver
             </a>
             <a href="{{ route('documento.descargar', ['id' => $archivo->id]) }}" class="action-btn download-btn">
                 <span>⬇</span> Descargar
