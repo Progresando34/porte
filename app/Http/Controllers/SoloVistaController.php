@@ -37,21 +37,55 @@ class SoloVistaController extends Controller
         return view('certificados_e.solo_vista.index', compact('prefijosPermitidos'));
     }
 
-    public function buscar(Request $request)
-    {
-        $cedula = $request->cedula;
+public function buscar(Request $request)
+{
+    $cedula = $request->cedula;
+    $cedulasMultiple = $request->cedulas_multiple;
+    
+    // Si hay cédulas múltiples, procesarlas
+    if (!empty($cedulasMultiple)) {
+        // Separar por saltos de línea y limpiar
+        $cedulas = array_filter(array_map('trim', explode("\n", $cedulasMultiple)));
         
-        $resultados = CitaRecibida::where('cedula', 'LIKE', "%{$cedula}%")->get();
-        
-        if ($resultados->isEmpty()) {
-            return redirect()->route('solo_vista.index')->with('mensaje', "No se encontraron documentos para la cédula: {$cedula}");
+        if (empty($cedulas)) {
+            return redirect()->route('solo_vista.index')->with('mensaje', 'No se ingresaron cédulas válidas');
         }
         
-        $resultados = [$cedula => $resultados];
-        $prefijosPermitidos = $this->getUserAllowedPrefixes();
+        $resultados = [];
+        $totalEncontrados = 0;
         
+        foreach ($cedulas as $ced) {
+            $docs = CitaRecibida::where('cedula', 'LIKE', "%{$ced}%")->get();
+            if ($docs->isNotEmpty()) {
+                $resultados[$ced] = $docs;
+                $totalEncontrados += $docs->count();
+            }
+        }
+        
+        if (empty($resultados)) {
+            return redirect()->route('solo_vista.index')->with('mensaje', 'No se encontraron documentos para las cédulas ingresadas');
+        }
+        
+        $prefijosPermitidos = $this->getUserAllowedPrefixes();
         return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
     }
+    
+    // Búsqueda individual (funcionamiento original)
+    if (empty($cedula)) {
+        return redirect()->route('solo_vista.index')->with('mensaje', 'Por favor ingrese una cédula');
+    }
+    
+    $resultados = CitaRecibida::where('cedula', 'LIKE', "%{$cedula}%")->get();
+    
+    if ($resultados->isEmpty()) {
+        return redirect()->route('solo_vista.index')->with('mensaje', "No se encontraron documentos para la cédula: {$cedula}");
+    }
+    
+    $resultados = [$cedula => $resultados];
+    $prefijosPermitidos = $this->getUserAllowedPrefixes();
+    
+    return view('certificados_e.solo_vista.index', compact('resultados', 'prefijosPermitidos'));
+}
     
     //  MÉTODO DE DEPURACIÓN - REEMPLAZA EL ANTERIOR
 public function verDocumentos($cedula)
