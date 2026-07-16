@@ -221,108 +221,133 @@ public function importarEmpresas(Request $request)
 }
 
 public function recibirArchivos(Request $request)
-{
-    try {
-        $archivos = $request->input('archivos', []);
-        
-        if (empty($archivos)) {
+    {
+        try {
+            $archivos = $request->input('archivos', []);
+            
+            if (empty($archivos)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se recibieron archivos'
+                ], 400);
+            }
+            
+            $archivosGuardados = 0;
+            $archivosOmitidos = 0;
+            $errores = 0;
+            $detalles = [];
+            
+            foreach ($archivos as $index => $archivoData) {
+                try {
+                    $cedula = $archivoData['cedula'] ?? null;
+                    $nombreArchivo = $archivoData['nombre_archivo'] ?? null;
+                    
+                    if (!$cedula || !$nombreArchivo) {
+                        $errores++;
+                        Log::warning("Archivo {$index}: faltan datos");
+                        continue;
+                    }
+                    
+                    // 🔥 VERIFICAR SI EL ARCHIVO YA EXISTE EN EL SISTEMA DE ARCHIVOS
+                    $rutaCompleta = storage_path('app/public/RESULTADOS/' . $cedula . '/' . $nombreArchivo);
+                    
+                    if (file_exists($rutaCompleta)) {
+                        $archivosOmitidos++;
+                        Log::info("Archivo ya existe en disco: {$cedula}/{$nombreArchivo}");
+                        $detalles[] = "Omitido (ya existe): {$nombreArchivo}";
+                        continue;
+                    }
+                    
+                    // Extraer prefijo y fecha del nombre del archivo
+                    preg_match('/^([a-z]+)(\d{8})\.pdf$/i', $nombreArchivo, $matches);
+                    
+                    if (count($matches) >= 3) {
+                        $prefijo = strtoupper($matches[1]);
+                        $fechaArchivo = $matches[2];
+                        
+                        // Fecha mínima
+                        if ($fechaArchivo < '20260514') {
+                            Log::info("Archivo omitido por fecha: {$nombreArchivo}");
+                            $archivosOmitidos++;
+                            continue;
+                        }
+                        
+                        // Validar prefijos permitidos
+                        $prefijosPermitidos = ['A', 'C', 'EV', 'S', 'VIS', 'H'];
+                        if (!in_array($prefijo, $prefijosPermitidos)) {
+                            Log::info("Archivo omitido por prefijo: {$nombreArchivo}");
+                            $archivosOmitidos++;
+                            continue;
+                        }
+                    }
+                    
+                    // Decodificar contenido
+                    $contenidoBase64 = $archivoData['contenido_base64'] ?? null;
+                    if (!$contenidoBase64) {
+                        $errores++;
+                        Log::warning("Archivo {$index}: sin contenido base64");
+                        continue;
+                    }
+                    
+                    $contenido = base64_decode($contenidoBase64);
+                    
+                    if ($contenido === false) {
+                        throw new \Exception('Error al decodificar archivo');
+                    }
+                    
+                    // Crear carpeta
+                    $carpeta = storage_path('app/public/RESULTADOS/' . $cedula);
+                    if (!is_dir($carpeta)) {
+                        mkdir($carpeta, 0777, true);
+                    }
+                    
+                    // Guardar archivo
+                    file_put_contents($rutaCompleta, $contenido);
+                    
+                    // Actualizar o crear cita
+                    CitaRecibida::updateOrCreate(
+                        [
+                            'cedula' => $cedula,
+                            'fecha' => $archivoData['fecha_cita'] ?? null
+                        ],
+                        [
+                            'nombre' => $archivoData['nombre'] ?? '',
+                            'mision' => $archivoData['mision'] ?? '',
+                            'nit_empresa' => $archivoData['nit_empresa'] ?? '',
+                            'nombre_empresa' => $archivoData['nombre_empresa'] ?? '',
+                            'mision_empresa' => $archivoData['mision_empresa'] ?? '',
+                            'carpeta_copiada' => true,
+                            'updated_at' => now()
+                        ]
+                    );
+                    
+                    $archivosGuardados++;
+                    Log::info("Archivo guardado: {$cedula}/{$nombreArchivo}");
+                    
+                } catch (\Exception $e) {
+                    $errores++;
+                    Log::error("Error guardando archivo {$index}: " . $e->getMessage());
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'archivos_guardados' => $archivosGuardados,
+                'archivos_omitidos' => $archivosOmitidos,
+                'errores' => $errores,
+                'total_recibidos' => count($archivos),
+                'detalles' => $detalles
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error en recibirArchivos: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
-                'message' => 'No se recibieron archivos'
-            ], 400);
+                'message' => 'Error al procesar archivos: ' . $e->getMessage()
+            ], 500);
         }
-        
-        $archivosGuardados = 0;
-        $errores = 0;
-        
-        foreach ($archivos as $archivoData) {
-            try {
-                $cedula = $archivoData['cedula'];
-                $nombreArchivo = $archivoData['nombre_archivo'];
-                $contenidoBase64 = $archivoData['contenido_base64'];
-                
-                // Extraer prefijo y fecha del nombre del archivo
-                // Formato: vis20260514.pdf
-                preg_match('/^([a-z]+)(\d{8})\.pdf$/i', $nombreArchivo, $matches);
-                
-                if (count($matches) >= 3) {
-                    $prefijo = strtoupper($matches[1]);
-                    $fechaArchivo = $matches[2];
-                    
-                    
-                 
-                    if ($fechaArchivo < '20260514') {
-                        Log::info("Archivo omitido por fecha: {$nombreArchivo} (fecha: {$fechaArchivo})");
-                        continue;
-                    }
-                    
-                    // Validar prefijos permitidos
-                    $prefijosPermitidos = ['A', 'C', 'EV', 'S', 'VIS', 'H'];
-                    if (!in_array($prefijo, $prefijosPermitidos)) {
-                        Log::info("Archivo omitido por prefijo: {$nombreArchivo} (prefijo: {$prefijo})");
-                        continue;
-                    }
-                }
-                
-                // Decodificar contenido
-                $contenido = base64_decode($contenidoBase64);
-                
-                if ($contenido === false) {
-                    throw new \Exception('Error al decodificar archivo');
-                }
-                
-                // Crear carpeta
-                $carpeta = storage_path('app/public/RESULTADOS/' . $cedula);
-                if (!is_dir($carpeta)) {
-                    mkdir($carpeta, 0777, true);
-                }
-                
-                // Guardar archivo
-                $rutaCompleta = $carpeta . '/' . $nombreArchivo;
-                file_put_contents($rutaCompleta, $contenido);
-                
-                // Actualizar o crear cita
-                CitaRecibida::updateOrCreate(
-                    [
-                        'cedula' => $cedula,
-                        'fecha' => $archivoData['fecha_cita'] ?? null
-                    ],
-                    [
-                        'nombre' => $archivoData['nombre'] ?? '',
-                        'mision' => $archivoData['mision'] ?? '',
-                        'nit_empresa' => $archivoData['nit_empresa'] ?? '',
-                        'nombre_empresa' => $archivoData['nombre_empresa'] ?? '',
-                        'mision_empresa' => $archivoData['mision_empresa'] ?? '',
-                        'carpeta_copiada' => true,
-                        'updated_at' => now()
-                    ]
-                );
-                
-                $archivosGuardados++;
-                Log::info("Archivo guardado: {$cedula}/{$nombreArchivo}");
-                
-            } catch (\Exception $e) {
-                $errores++;
-                Log::error("Error guardando archivo: " . $e->getMessage());
-            }
-        }
-        
-        return response()->json([
-            'success' => true,
-            'archivos_guardados' => $archivosGuardados,
-            'errores' => $errores,
-            'total_recibidos' => count($archivos)
-        ]);
-        
-    } catch (\Exception $e) {
-        Log::error('Error en recibirArchivos: ' . $e->getMessage());
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Error al procesar archivos: ' . $e->getMessage()
-        ], 500);
     }
 }
 
 
-}
