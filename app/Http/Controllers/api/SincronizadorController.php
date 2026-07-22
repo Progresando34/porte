@@ -273,7 +273,7 @@ public function recibirArchivos(Request $request)
                         }
                         
                         // Validar prefijos permitidos
-                        $prefijosPermitidos = ['A', 'C', 'EV', 'S', 'VIS', 'H'];
+                        $prefijosPermitidos = ['A', 'C', 'EV', 'VF', 'VIS', 'H', 'VF'];
                         if (!in_array($prefijo, $prefijosPermitidos)) {
                             Log::info("Archivo omitido por prefijo: {$nombreArchivo}");
                             $archivosOmitidos++;

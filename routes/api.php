@@ -104,6 +104,59 @@ Route::post('/perfil/crear', function(Request $request) {
     }
 });
 
+
+// Agrega esta ruta después de la ruta de perfiles
+Route::post('/prefijo/crear', function(Request $request) {
+    try {
+        $prefijo = $request->input('prefijo');
+        $descripcion = $request->input('descripcion');
+        
+        if (!$prefijo || !$descripcion) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El prefijo y la descripción son requeridos'
+            ], 400);
+        }
+        
+        // Buscar si ya existe
+        $existe = DB::table('prefijos')->where('prefijo', $prefijo)->first();
+        
+        if (!$existe) {
+            $id = DB::table('prefijos')->insertGetId([
+                'prefijo' => $prefijo,
+                'descripcion' => $descripcion,
+                'activo' => true,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'id' => $id,
+                'prefijo' => $prefijo,
+                'descripcion' => $descripcion,
+                'creado' => true,
+                'message' => 'Prefijo creado exitosamente'
+            ]);
+        } else {
+            return response()->json([
+                'success' => true,
+                'id' => $existe->id,
+                'prefijo' => $existe->prefijo,
+                'descripcion' => $existe->descripcion,
+                'creado' => false,
+                'message' => 'El prefijo ya existía'
+            ]);
+        }
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});
+
 Route::get('/empresa/nombre/{codigo}', function($codigo) {
     try {
         $empresa = DB::table('empresas')->where('codigo', $codigo)->first();
