@@ -143,7 +143,6 @@ body {
 .btn-buscar {
     background: linear-gradient(135deg, var(--verde-principal), var(--verde-oscuro));
     border: none;
-    color: var(--blanco-puro);
     padding: 0.9rem 2rem;
     font-weight: 600;
     border-radius: var(--border-radius);
