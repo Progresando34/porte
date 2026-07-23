@@ -179,7 +179,7 @@ private function redirectByProfile($user)
     
     switch ($profileName) {
         case 'sanidad':
-            return redirect('/consultaArmas');
+            return redirect('/client/consultaArmas');
             
         case 'admin':
         case 'administrador':

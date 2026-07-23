@@ -27,81 +27,50 @@ class UserController extends Controller
     }
 
 public function store(Request $request)
-    {
-        Log::info('=== INICIO REGISTRO DE USUARIO ===');
-        Log::info('Datos recibidos:', $request->all());
+{
+    try {
+        // Mostrar datos
+        echo "📝 PASO 1: Datos recibidos<br>";
+        echo "<pre>";
+        print_r($request->all());
+        echo "</pre><br>";
         
-        try {
-            // Validación
-            Log::info('Validando datos...');
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users',
-                'password' => 'required|string|min:6|confirmed',
-                'profile_id' => 'required|exists:profiles,id',
-                'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-                'prefijos' => 'nullable|array',
-                'prefijos.*' => 'exists:prefijos,id'
-            ]);
-            Log::info('✅ Validación pasada correctamente');
-
-            // Procesar avatar
-            $avatarPath = null;
-            if ($request->hasFile('avatar')) {
-                Log::info('Procesando archivo de avatar...');
-                $avatarPath = $request->file('avatar')->store('avatars', 'public');
-                Log::info('Avatar guardado en: ' . $avatarPath);
-            } else {
-                Log::info('No se recibió archivo de avatar');
-            }
-
-            // Crear usuario
-            Log::info('Creando usuario en BD...', [
-                'name' => $request->name,
-                'email' => $request->email,
-                'profile_id' => $request->profile_id
-            ]);
-            
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'profile_id' => $request->profile_id,
-                'avatar' => $avatarPath,
-            ]);
-            
-            Log::info(' Usuario creado con ID: ' . $user->id);
-
-            // Asignar prefijos
-            if ($request->has('prefijos')) {
-                $prefijosIds = $request->prefijos;
-                Log::info('Asignando prefijos al usuario: ' . json_encode($prefijosIds));
-                $user->prefijos()->sync($prefijosIds);
-                Log::info('Prefijos asignados correctamente');
-            } else {
-                Log::info('No se asignaron prefijos');
-            }
-
-            Log::info('=== REGISTRO EXITOSO ===');
-            return redirect()->route('usuarios.index')
-                ->with('success', 'Usuario registrado correctamente.');
-                
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error(' Error de validación:', $e->errors());
-            return back()->withErrors($e->errors())->withInput();
-            
-        } catch (\Illuminate\Database\QueryException $e) {
-            Log::error('❌ Error de base de datos: ' . $e->getMessage());
-            Log::error('SQL: ' . $e->getSql());
-            Log::error('Bindings: ' . json_encode($e->getBindings()));
-            return back()->with('error', 'Error en la base de datos: ' . $e->getMessage())->withInput();
-            
-        } catch (\Exception $e) {
-            Log::error('❌ Error general al registrar usuario: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            return back()->with('error', 'Error inesperado: ' . $e->getMessage())->withInput();
+        // PASO 2: Intentar crear usuario
+        echo "📝 PASO 2: Creando usuario...<br>";
+        
+        $user = new User();
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->password = Hash::make($request->password);
+        $user->profile_id = $request->profile_id;
+        $user->save();
+        
+        echo "✅ USUARIO CREADO!<br>";
+        echo "ID: " . $user->id . "<br>";
+        echo "Nombre: " . $user->name . "<br>";
+        echo "Email: " . $user->email . "<br>";
+        echo "Profile ID: " . $user->profile_id . "<br>";
+        
+        // PASO 3: Verificar que existe en BD
+        echo "<br>📝 PASO 3: Verificando en BD...<br>";
+        $verificar = User::find($user->id);
+        if ($verificar) {
+            echo "✅ Usuario encontrado en BD<br>";
+        } else {
+            echo "❌ Usuario NO encontrado en BD<br>";
         }
+        
+        exit();
+        
+    } catch (\Exception $e) {
+        echo "❌ ERROR: " . $e->getMessage() . "<br>";
+        echo "Archivo: " . $e->getFile() . " (Línea " . $e->getLine() . ")<br>";
+        echo "<pre>";
+        echo $e->getTraceAsString();
+        echo "</pre>";
+        exit();
     }
+}
     
     // ✅ Agregar método edit
     public function edit($id)

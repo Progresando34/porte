@@ -109,18 +109,10 @@
                         <h3>
 
 
-
-<span>
-    @php
-        $textoMostrar = $pdf['descripcion'] ?: 'Documento sin descripción';
-        
-        // Si es fisioterapia y la fecha es hoy, cambiar a Psicologia
-        if ($pdf['prefijo'] == 'FISIO' && date('Y-m-d') == date('Y-m-d', strtotime($cita->fecha))) {
-            $textoMostrar = 'Psicologia';
-        }
-    @endphp
-    {{ $textoMostrar }}
-</span>
+                        
+                            <span>
+                                 {{ $pdf['descripcion'] ?: 'Documento sin descripción' }}
+                            </span>
 
 
 

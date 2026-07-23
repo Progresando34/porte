@@ -10,10 +10,12 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificadoEController;
 use App\Http\Controllers\SoloVistaController;
 use App\Http\Controllers\TrabajadorController;
+use App\Http\Controllers\TenenciaPanelConsultaController;
 use App\Http\Middleware\AuthenticateTrabajador;
 use App\Http\Controllers\ClienteCertificadoController;
 use App\Http\Controllers\RayosXController;
 use Illuminate\Support\Facades\Schema;
+
 
 // Página de inicio
 Route::get('/', function () {
@@ -129,6 +131,11 @@ Route::get('/client/consultaArmas', [ArmaController::class, 'consulta'])->name('
 Route::get('/armas/ver/{filename}', [ArmaController::class, 'ver'])->name('armas.ver.certificado');
 Route::get('/armas/descargar/{filename}', [ArmaController::class, 'descargar'])->name('armas.descargar.certificado');
 Route::post('/descargar-multiples-certificados', [ArmaController::class, 'descargarMultiples'])->name('descargar.multiples');
+
+
+Route::get('/tenencia-panel-consulta', [TenenciaPanelConsultaController::class, 'index'])
+    ->name('tenencia.panel.consulta');
+
 
 // ========== RUTAS DE DEPURACIÓN ==========
 Route::get('/debug-session', function () {
