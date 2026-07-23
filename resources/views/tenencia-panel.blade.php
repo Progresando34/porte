@@ -73,7 +73,7 @@
                         </div>
                     </form>
                     
-                    <!-- BÚSQUEDAS RÁPIDAS -->
+                    <!-- BÚSQUEDAS RÁPIDAS 
                     <div class="mt-4 pt-3" style="border-top: 1px solid var(--gris-borde);">
                         <small style="color: var(--gris-claro);">Búsquedas rápidas:</small>
                         <div class="d-flex flex-wrap gap-2 mt-2">
@@ -88,6 +88,7 @@
                             </button>
                         </div>
                     </div>
+                    -->
                 </div>
                 
                 <!-- INFO

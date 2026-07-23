@@ -66,7 +66,7 @@
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>Código</th>
+                                    <th>Fecha de Expedición</th>
                                     <th>Nombre</th>
                                     <th>Documento</th>
                                     <th>Estado</th>
@@ -96,8 +96,8 @@
                                     <td>{{ $item->documento ?? 'N/A' }}</td>
                                     <td>
                                         @php
-                                            $estado = $item->estado ?? 'inactivo';
-                                            $clase = $estado == 'activo' ? 'badge-activo' : 'badge-inactivo';
+                                            $estado = $item->estado ?? 'No Acto';
+                                            $clase = $estado == 'Acto' ? 'badge-activo' : 'badge-inactivo';
                                         @endphp
                                         <span class="badge-estado {{ $clase }}">
                                             <i class="fas fa-circle me-1" style="font-size: 5px; vertical-align: middle;"></i>
@@ -187,8 +187,8 @@
                                 <div class="label">Estado</div>
                                 <div class="value">
                                     @php
-                                        $estado = $item->estado ?? 'inactivo';
-                                        $color = $estado == 'activo' ? 'var(--verde-oscuro)' : '#c0392b';
+                                        $estado = $item->estado ?? 'No Acto';
+                                        $color = $estado == 'Acto' ? 'var(--verde-oscuro)' : '#c0392b';
                                     @endphp
                                     <span style="color: {{ $color }}; font-weight: 600;">
                                         {{ ucfirst($estado) }}
