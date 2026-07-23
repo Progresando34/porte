@@ -136,6 +136,10 @@ Route::post('/descargar-multiples-certificados', [ArmaController::class, 'descar
 Route::get('/tenencia-panel-consulta', [TenenciaPanelConsultaController::class, 'index'])
     ->name('tenencia.panel.consulta');
 
+Route::get('/tenencia-resultados', [TenenciaPanelConsultaController::class, 'resultados'])
+    ->name('tenencia.resultados');
+    
+
 
 // ========== RUTAS DE DEPURACIÓN ==========
 Route::get('/debug-session', function () {
