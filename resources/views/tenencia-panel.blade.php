@@ -59,7 +59,7 @@
                                         type="text" 
                                         class="input-busqueda" 
                                         name="busqueda" 
-                                        placeholder="Número de documento, código o nombre..."
+                                        placeholder="Número de documento"
                                         required
                                         autofocus
                                     >
