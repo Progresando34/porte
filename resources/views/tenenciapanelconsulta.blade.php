@@ -20,7 +20,7 @@
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title">Resultados de la Consulta</h5>
-                        <!-- Muestra tus datos aquí -->
+                       
                     </div>
                 </div>
             </div>
