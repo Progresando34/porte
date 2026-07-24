@@ -184,7 +184,7 @@
                         </div>
                         <div class="col-6">
                             <div class="detalle-item">
-                                <div class="label">Estado</div>
+                                <div class="label">Resultado Apto</div>
                                 <div class="value">
                                     @php
                                         $estado = $item->estado ?? 'No Acto';
