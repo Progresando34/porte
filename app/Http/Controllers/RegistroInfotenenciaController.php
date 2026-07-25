@@ -46,4 +46,63 @@ class RegistroInfotenenciaController extends Controller
         $certificados = Certificado::orderBy('created_at', 'desc')->get();
         return view('registro-infotenencia.listar', compact('certificados'));
     }
+
+    // EDITAR - Mostrar formulario con datos existentes
+    public function edit($id)
+    {
+        $certificado = Certificado::findOrFail($id);
+        return view('registro-infotenencia.edit', compact('certificado'));
+    }
+
+    // ACTUALIZAR
+    public function update(Request $request, $id)
+    {
+        $certificado = Certificado::findOrFail($id);
+
+        // Validación de datos
+        $validated = $request->validate([
+            'resultado_apto' => 'required|boolean',
+            'direccion_ips' => 'required|string',
+            'sede_ips' => 'required|string',
+            'nombre' => 'required|string|max:255',
+            'cedula' => 'required|string|max:255',
+            'archivo_certificado' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'fecha_expedicion' => 'required|date',
+        ]);
+
+        // Procesar archivo si se subió uno nuevo
+        if ($request->hasFile('archivo_certificado')) {
+            // Eliminar archivo anterior si existe
+            if ($certificado->archivo_certificado && Storage::disk('public')->exists($certificado->archivo_certificado)) {
+                Storage::disk('public')->delete($certificado->archivo_certificado);
+            }
+
+            $file = $request->file('archivo_certificado');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('certificados', $filename, 'public');
+            $validated['archivo_certificado'] = $path;
+        }
+
+        // Actualizar el registro
+        $certificado->update($validated);
+
+        return redirect()->route('registro-infotenencia.listar')
+            ->with('success', 'Registro actualizado exitosamente.');
+    }
+
+    // ELIMINAR
+    public function destroy($id)
+    {
+        $certificado = Certificado::findOrFail($id);
+
+        // Eliminar archivo si existe
+        if ($certificado->archivo_certificado && Storage::disk('public')->exists($certificado->archivo_certificado)) {
+            Storage::disk('public')->delete($certificado->archivo_certificado);
+        }
+
+        $certificado->delete();
+
+        return redirect()->route('registro-infotenencia.listar')
+            ->with('success', 'Registro eliminado exitosamente.');
+    }
 }

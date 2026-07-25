@@ -150,6 +150,16 @@ Route::post('/registro-infotenencia', [RegistroInfotenenciaController::class, 's
 Route::get('/registro-infotenencia/listar', [RegistroInfotenenciaController::class, 'listar'])
     ->name('registro-infotenencia.listar');
 
+// Rutas para editar y eliminar
+Route::get('/registro-infotenencia/{id}/edit', [RegistroInfotenenciaController::class, 'edit'])
+    ->name('registro-infotenencia.edit');
+
+Route::put('/registro-infotenencia/{id}', [RegistroInfotenenciaController::class, 'update'])
+    ->name('registro-infotenencia.update');
+
+Route::delete('/registro-infotenencia/{id}', [RegistroInfotenenciaController::class, 'destroy'])
+    ->name('registro-infotenencia.destroy');
+
 
     
 

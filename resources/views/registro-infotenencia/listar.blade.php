@@ -19,6 +19,13 @@
                 </a>
             </div>
             <div class="card-body">
+                @if(session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
                 @if($certificados->isEmpty())
                     <div class="text-center py-5">
                         <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
@@ -38,6 +45,7 @@
                                     <th>Fecha Expedición</th>
                                     <th>Archivo</th>
                                     <th>Fecha Creación</th>
+                                    <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -67,6 +75,24 @@
                                             @endif
                                         </td>
                                         <td>{{ $certificado->created_at ? date('d/m/Y H:i', strtotime($certificado->created_at)) : 'N/A' }}</td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <!-- Botón Editar -->
+                                                <a href="{{ route('registro-infotenencia.edit', $certificado->id) }}" 
+                                                   class="btn btn-sm btn-warning" 
+                                                   title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                
+                                                <!-- Botón Eliminar con confirmación -->
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-danger" 
+                                                        title="Eliminar"
+                                                        onclick="confirmarEliminacion({{ $certificado->id }})">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -76,6 +102,47 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal de Confirmación para Eliminar -->
+    <div class="modal fade" id="modalEliminar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Eliminación
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas eliminar este registro?</p>
+                    <p class="text-muted small">Esta acción no se puede deshacer.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form id="formEliminar" method="POST" style="display: inline;">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-2"></i>Sí, Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function confirmarEliminacion(id) {
+            // Configurar el formulario con la ruta correcta
+            const form = document.getElementById('formEliminar');
+            form.action = `/registro-infotenencia/${id}`;
+            
+            // Mostrar el modal
+            const modal = new bootstrap.Modal(document.getElementById('modalEliminar'));
+            modal.show();
+        }
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
