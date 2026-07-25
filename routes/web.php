@@ -15,6 +15,7 @@ use App\Http\Middleware\AuthenticateTrabajador;
 use App\Http\Controllers\ClienteCertificadoController;
 use App\Http\Controllers\RayosXController;
 use Illuminate\Support\Facades\Schema;
+use App\Http\Controllers\RegistroInfotenenciaController;
 
 
 // Página de inicio
@@ -138,6 +139,18 @@ Route::get('/tenencia-panel-consulta', [TenenciaPanelConsultaController::class, 
 
 Route::get('/tenencia-resultados', [TenenciaPanelConsultaController::class, 'resultados'])
     ->name('tenencia.resultados');
+
+
+Route::get('/registro-infotenencia', [RegistroInfotenenciaController::class, 'index'])
+    ->name('registro-infotenencia.index');
+
+Route::post('/registro-infotenencia', [RegistroInfotenenciaController::class, 'store'])
+    ->name('registro-infotenencia.store');
+
+Route::get('/registro-infotenencia/listar', [RegistroInfotenenciaController::class, 'listar'])
+    ->name('registro-infotenencia.listar');
+
+
     
 
 

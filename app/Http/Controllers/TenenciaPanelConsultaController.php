@@ -3,45 +3,40 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Certificado;
+use Carbon\Carbon; // Importar Carbon
 
 class TenenciaPanelConsultaController extends Controller
 {
     // PANEL DE BÚSQUEDA
     public function index()
     {
-        // Datos de ejemplo (después los reemplazarás con tu modelo)
-        $totalRegistros = 1234;
-        $ultimaActualizacion = 'Hoy';
+        // Estadísticas reales de la tabla usando el modelo Certificado
+        $totalRegistros = Certificado::count();
+        
+        // Obtener la última actualización y convertir a Carbon
+        $ultimaActualizacion = Certificado::max('updated_at');
+        
+        // Verificar si es null y convertir a Carbon si es necesario
+        if ($ultimaActualizacion) {
+            $ultimaActualizacion = Carbon::parse($ultimaActualizacion)->format('d/m/Y H:i');
+        } else {
+            $ultimaActualizacion = 'Sin registros';
+        }
         
         return view('tenencia-panel', compact('totalRegistros', 'ultimaActualizacion'));
     }
     
-    // RESULTADOS
+    // RESULTADOS POR CÉDULA
     public function resultados(Request $request)
     {
-        $termino = $request->get('busqueda', '');
+        $cedula = $request->get('busqueda', '');
         
-        // TEMPORAL: Datos de ejemplo
-        // DESPUÉS: Reemplaza con tu modelo real
-        $resultados = collect([
-            (object) [
-                'id' => 1,
-                'codigo' => 'TEN-001',
-                'nombre' => 'Juan',
-                'apellido' => 'Pérez',
-                'documento' => '123456789',
-                'estado' => 'activo'
-            ],
-            (object) [
-                'id' => 2,
-                'codigo' => 'TEN-002',
-                'nombre' => 'María',
-                'apellido' => 'González',
-                'documento' => '987654321',
-                'estado' => 'inactivo'
-            ]
-        ]);
+        // Buscar registros por cédula usando el modelo Certificado
+        $resultados = Certificado::where('cedula', 'LIKE', "%{$cedula}%")
+            ->orderBy('created_at', 'desc')
+            ->get();
         
-        return view('tenencia-resultados', compact('resultados', 'termino'));
+        return view('tenencia-resultados', compact('resultados', 'cedula'));
     }
 }

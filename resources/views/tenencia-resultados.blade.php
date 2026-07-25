@@ -3,11 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultados - Tenencia</title>
+    <title>Resultados - Infotenencia</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ asset('css/tenencia.css') }}">
+    
+    <style>
+        :root {
+            --verde-principal: #2ecc71;
+            --verde-oscuro: #27ae60;
+            --gris-fondo: #f8f9fa;
+            --gris-borde: #e9ecef;
+            --gris-medio: #6c757d;
+            --gris-claro: #adb5bd;
+            --rojo: #e74c3c;
+        }
+        
+        .header-gradient {
+            background: linear-gradient(135deg, var(--verde-oscuro), var(--verde-principal));
+            padding: 1.5rem 0;
+            color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .logo-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .logo-text i {
+            margin-right: 10px;
+        }
+        
+        .btn-volver {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            color: var(--verde-oscuro);
+            text-decoration: none;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-volver:hover {
+            background: var(--gris-fondo);
+            color: var(--verde-oscuro);
+            text-decoration: none;
+        }
+        
+        .card-panel-light {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid var(--gris-borde);
+        }
+        
+        .badge-publico {
+            background: var(--gris-fondo);
+            color: var(--gris-medio);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .table-tenencia {
+            margin-bottom: 0;
+        }
+        
+        .table-tenencia thead th {
+            background: var(--gris-fondo);
+            color: var(--gris-medio);
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1rem 0.75rem;
+            border-bottom: 2px solid var(--gris-borde);
+        }
+        
+        .table-tenencia tbody td {
+            padding: 1rem 0.75rem;
+            vertical-align: middle;
+            border-bottom: 1px solid var(--gris-borde);
+        }
+        
+        .table-tenencia tbody tr:hover {
+            background: rgba(46, 204, 113, 0.05);
+        }
+        
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--verde-principal), var(--verde-oscuro));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        .badge-estado {
+            padding: 0.35rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .badge-activo {
+            background: rgba(46, 204, 113, 0.15);
+            color: var(--verde-oscuro);
+        }
+        
+        .badge-inactivo {
+            background: rgba(231, 76, 60, 0.15);
+            color: var(--rojo);
+        }
+        
+        .btn-ver {
+            background: var(--gris-fondo);
+            border: none;
+            color: var(--gris-medio);
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-ver:hover {
+            background: var(--verde-principal);
+            color: white;
+        }
+        
+        .empty-icon {
+            font-size: 4rem;
+            color: var(--gris-claro);
+            margin-bottom: 1rem;
+        }
+        
+        .empty-title {
+            color: var(--gris-medio);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .empty-text {
+            color: var(--gris-claro);
+        }
+        
+        .btn-buscar {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--verde-principal), var(--verde-oscuro));
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-buscar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+            color: white;
+            text-decoration: none;
+        }
+        
+        /* Modal */
+        .modal-contenido {
+            border-radius: 16px;
+            border: none;
+        }
+        
+        .detalle-item {
+            padding: 0.75rem;
+            background: var(--gris-fondo);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .detalle-item .label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--gris-claro);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .detalle-item .value {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.95rem;
+        }
+    </style>
 </head>
 <body>
     <!-- HEADER CON GRADIENTE VERDE -->
@@ -19,8 +213,7 @@
                     Sistema de Consulta - Porte y Tenencia de Armas de Fuego - IPS PROGRESANDO EN SALUD
                 </div>
                 <span style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">
-                  
-                    
+                    <i class="fas fa-calendar-alt me-1"></i> {{ date('d/m/Y') }}
                 </span>
             </div>
         </div>
@@ -33,20 +226,20 @@
                 <!-- VOLVER -->
                 <div class="mt-3">
                     <a href="{{ route('tenencia.panel.consulta') }}" class="btn-volver">
-                        <i class="fas fa-arrow-left me-2"></i>Volver
+                        <i class="fas fa-arrow-left me-2"></i>Volver a buscar
                     </a>
                 </div>
                 
-                <!-- LOGO PEQUEÑO Y RESUMEN -->
+                <!-- RESUMEN -->
                 <div class="card-panel-light">
                     <div class="row align-items-center">
                         <div class="col-12 col-md-3 text-center text-md-start">
-                            <img src="{{ asset('images/logoi.png') }}" alt="Logo" style="max-width: 120px; height: auto;">
+                            <img src="{{ asset('images/logoconjunto.png') }}" alt="Logo" style="max-width: 250px; height: auto;">
                         </div>
                         <div class="col-12 col-md-6 text-center">
                             <div>
                                 <i class="fas fa-search me-2" style="color: var(--verde-oscuro);"></i>
-                                Resultados para: <strong>"{{ $termino ?? 'Todos' }}"</strong>
+                                Resultados para cédula: <strong>"{{ $cedula ?? 'Todos' }}"</strong>
                             </div>
                         </div>
                         <div class="col-12 col-md-3 text-center text-md-end">
@@ -58,7 +251,7 @@
                     </div>
                 </div>
                 
-                <!-- TABLA -->
+                <!-- TABLA DE RESULTADOS -->
                 @if(isset($resultados) && $resultados->count() > 0)
                 <div class="card-panel-light p-0">
                     <div class="table-responsive">
@@ -68,8 +261,9 @@
                                     <th>#</th>
                                     <th>Fecha de Expedición</th>
                                     <th>Nombre</th>
-                                    <th>Documento</th>
-                                    <th>Estado</th>
+                                    <th>Cédula</th>
+                                    <th>Resultado</th>
+                                    <th>Dirección IPS</th>
                                     <th class="text-center">Ver</th>
                                 </tr>
                             </thead>
@@ -79,7 +273,7 @@
                                     <td>{{ $index + 1 }}</td>
                                     <td>
                                         <span style="background: var(--gris-fondo); padding: 0.2rem 0.8rem; border-radius: 4px; font-weight: 500; font-size: 0.85rem;">
-                                            {{ $item->codigo ?? 'N/A' }}
+                                            {{ $item->fecha_expedicion ? date('d/m/Y', strtotime($item->fecha_expedicion)) : 'N/A' }}
                                         </span>
                                     </td>
                                     <td>
@@ -89,20 +283,26 @@
                                             </div>
                                             <div>
                                                 <div style="font-weight: 500;">{{ $item->nombre ?? 'Sin nombre' }}</div>
-                                                <small style="color: var(--gris-claro);">{{ $item->apellido ?? '' }}</small>
+                                                <small style="color: var(--gris-claro);">ID: {{ $item->id }}</small>
                                             </div>
                                         </div>
                                     </td>
-                                    <td>{{ $item->documento ?? 'N/A' }}</td>
+                                    <td>{{ $item->cedula ?? 'N/A' }}</td>
                                     <td>
                                         @php
-                                            $estado = $item->estado ?? 'No Acto';
-                                            $clase = $estado == 'Acto' ? 'badge-activo' : 'badge-inactivo';
+                                            $apto = $item->resultado_apto ?? false;
+                                            $clase = $apto ? 'badge-activo' : 'badge-inactivo';
+                                            $texto = $apto ? 'Apto' : 'No Apto';
                                         @endphp
                                         <span class="badge-estado {{ $clase }}">
                                             <i class="fas fa-circle me-1" style="font-size: 5px; vertical-align: middle;"></i>
-                                            {{ ucfirst($estado) }}
+                                            {{ $texto }}
                                         </span>
+                                    </td>
+                                    <td>
+                                        <small style="font-size: 0.75rem; color: var(--gris-medio);">
+                                            {{ $item->direccion_ips ?? 'N/A' }}
+                                        </small>
                                     </td>
                                     <td class="text-center">
                                         <button class="btn-ver" data-bs-toggle="modal" data-bs-target="#detalleModal{{ $item->id }}">
@@ -116,20 +316,13 @@
                     </div>
                 </div>
                 
-                <!-- PAGINACIÓN -->
-                @if(method_exists($resultados, 'links'))
-                <div class="mt-4 d-flex justify-content-center">
-                    {{ $resultados->links('pagination::bootstrap-5') }}
-                </div>
-                @endif
-                
                 @else
                 <!-- VACÍO -->
                 <div class="card-panel-light text-center py-5">
                     <i class="fas fa-search-minus empty-icon"></i>
                     <h3 class="empty-title">No se encontraron resultados</h3>
                     <p class="empty-text">
-                        No hay registros que coincidan con tu búsqueda.
+                        No hay registros que coincidan con la cédula <strong>"{{ $cedula }}"</strong>.
                     </p>
                     <div class="mt-3">
                         <a href="{{ route('tenencia.panel.consulta') }}" class="btn-buscar" style="width: auto; padding: 0.6rem 2rem;">
@@ -143,73 +336,101 @@
         </div>
     </div>
     
-    <!-- MODALES -->
+    <!-- MODALES DE DETALLE -->
     @if(isset($resultados) && $resultados->count() > 0)
     @foreach($resultados as $item)
     <div class="modal fade" id="detalleModal{{ $item->id }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content modal-contenido">
-                <div class="modal-header">
+                <div class="modal-header" style="border-bottom: 2px solid var(--verde-principal);">
                     <h5 class="modal-title">
-                        <i class="fas fa-info-circle me-2" style="color: var(--verde-oscuro);"></i>
-                        Detalle de Tenencia
+                        <i class="fas fa-id-card me-2" style="color: var(--verde-oscuro);"></i>
+                        Detalle del Registro #{{ $item->id }}
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <div class="detalle-item">
-                                <div class="label">Código</div>
-                                <div class="value">{{ $item->codigo ?? 'N/A' }}</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="detalle-item">
-                                <div class="label">Documento</div>
-                                <div class="value">{{ $item->documento ?? 'N/A' }}</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
+                    <div class="row g-3">
+                        <div class="col-md-6">
                             <div class="detalle-item">
                                 <div class="label">Nombre</div>
                                 <div class="value">{{ $item->nombre ?? 'N/A' }}</div>
                             </div>
                         </div>
-                        <div class="col-6">
+                        <div class="col-md-6">
                             <div class="detalle-item">
-                                <div class="label">Apellido</div>
-                                <div class="value">{{ $item->apellido ?? 'N/A' }}</div>
+                                <div class="label">Cédula</div>
+                                <div class="value">{{ $item->cedula ?? 'N/A' }}</div>
                             </div>
                         </div>
-                        <div class="col-6">
+                        <div class="col-md-6">
+                            <div class="detalle-item">
+                                <div class="label">Fecha Expedición</div>
+                                <div class="value">{{ $item->fecha_expedicion ? date('d/m/Y', strtotime($item->fecha_expedicion)) : 'N/A' }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
                             <div class="detalle-item">
                                 <div class="label">Resultado Apto</div>
                                 <div class="value">
                                     @php
-                                        $estado = $item->estado ?? 'No Acto';
-                                        $color = $estado == 'Acto' ? 'var(--verde-oscuro)' : '#c0392b';
+                                        $apto = $item->resultado_apto ?? false;
+                                        $color = $apto ? 'var(--verde-oscuro)' : 'var(--rojo)';
                                     @endphp
                                     <span style="color: {{ $color }}; font-weight: 600;">
-                                        {{ ucfirst($estado) }}
+                                        {{ $apto ? '✅ Apto' : '❌ No Apto' }}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-6">
+                        <div class="col-md-6">
                             <div class="detalle-item">
-                                <div class="label">Fecha</div>
-                                <div class="value">{{ $item->fecha ?? 'N/A' }}</div>
+                                <div class="label">Dirección IPS</div>
+                                <div class="value" style="font-size: 0.85rem;">{{ $item->direccion_ips ?? 'N/A' }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detalle-item">
+                                <div class="label">Sede IPS</div>
+                                <div class="value">{{ $item->sede_ips ?? 'N/A' }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="detalle-item">
+                                <div class="label">Archivo Certificado</div>
+                                <div class="value">
+                                    @if($item->archivo_certificado)
+                                        <a href="{{ asset('storage/' . $item->archivo_certificado) }}" 
+                                           target="_blank" 
+                                           style="color: var(--verde-oscuro); text-decoration: none; font-weight: 500;">
+                                            <i class="fas fa-file-pdf me-2"></i>Ver certificado
+                                        </a>
+                                    @else
+                                        <span style="color: var(--gris-claro);">Sin archivo adjunto</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detalle-item">
+                                <div class="label">Registrado</div>
+                                <div class="value" style="font-size: 0.85rem;">{{ $item->created_at ? date('d/m/Y H:i', strtotime($item->created_at)) : 'N/A' }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detalle-item">
+                                <div class="label">Última actualización</div>
+                                <div class="value" style="font-size: 0.85rem;">{{ $item->updated_at ? date('d/m/Y H:i', strtotime($item->updated_at)) : 'N/A' }}</div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="border-top: 1px solid var(--gris-borde);">
                     <button type="button" class="btn" style="background: var(--gris-fondo); border: 1px solid var(--gris-borde); color: var(--gris-medio); border-radius: 8px; padding: 0.5rem 1.5rem;" data-bs-dismiss="modal">
                         <i class="fas fa-times me-2"></i>Cerrar
                     </button>
-                    <button type="button" class="btn" style="background: linear-gradient(135deg, var(--verde-principal), var(--verde-oscuro)); color: white; border: none; border-radius: 8px; padding: 0.5rem 1.5rem;" onclick="copyToClipboard('{{ $item->codigo ?? '' }}')">
-                        <i class="fas fa-copy me-2"></i>Copiar
+                    <button type="button" class="btn" style="background: linear-gradient(135deg, var(--verde-principal), var(--verde-oscuro)); color: white; border: none; border-radius: 8px; padding: 0.5rem 1.5rem;" onclick="copyToClipboard('{{ $item->cedula ?? '' }}')">
+                        <i class="fas fa-copy me-2"></i>Copiar cédula
                     </button>
                 </div>
             </div>
@@ -222,7 +443,7 @@
     function copyToClipboard(text) {
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('✅ Código copiado');
+                alert('✅ Cédula copiada al portapapeles');
             });
         } else {
             const textarea = document.createElement('textarea');
@@ -231,7 +452,7 @@
             textarea.select();
             document.execCommand('copy');
             document.body.removeChild(textarea);
-            alert('✅ Código copiado');
+            alert('✅ Cédula copiada al portapapeles');
         }
     }
     </script>
