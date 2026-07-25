@@ -54,9 +54,9 @@
                                         <td>{{ $certificado->id }}</td>
                                         <td>
                                             @if($certificado->resultado_apto)
-                                                <span class="badge bg-success">Apto ✅</span>
+                                                <span class="badge bg-success">Apto</span>
                                             @else
-                                                <span class="badge bg-danger">No Apto ❌</span>
+                                                <span class="badge bg-danger">No Apto</span>
                                             @endif
                                         </td>
                                         <td>{{ $certificado->direccion_ips ?? 'N/A' }}</td>

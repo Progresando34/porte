@@ -67,30 +67,25 @@
                         <form action="{{ route('registro-infotenencia.store') }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             
-                            <!-- Resultado Apto -->
-<!-- Resultado Apto - Por defecto VERDADERO -->
-<div class="mb-3">
-    <label class="form-label fw-bold required">Resultado Apto</label>
-    <div>
-        <button type="button" 
-                class="btn btn-toggle btn-success"  <!-- Cambiado a btn-success -->
-                id="btnResultado"
-                onclick="toggleResultado()">
-            <span id="resultadoTexto">Verdadero ✅</span>  <!-- Cambiado a Verdadero -->
-        </button>
-        <input type="hidden" name="resultado_apto" id="resultado_apto" value="1">  <!-- Cambiado a 1 -->
-        <small class="text-muted d-block mt-1">
-            <i class="fas fa-info-circle"></i> Haz clic en el botón para cambiar el estado
-        </small>
-    </div>
-    @error('resultado_apto')
-        <div class="text-danger small">{{ $message }}</div>
-    @enderror
-</div>
-
-
-
-
+                            <!-- Resultado Apto - Por defecto VERDADERO -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold required">Resultado Apto</label>
+                                <div>
+                                    <button type="button" 
+                                            class="btn btn-toggle btn-success" 
+                                            id="btnResultado"
+                                            onclick="toggleResultado()">
+                                        <span id="resultadoTexto">Verdadero ✅</span>
+                                    </button>
+                                    <input type="hidden" name="resultado_apto" id="resultado_apto" value="1">
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fas fa-info-circle"></i> Haz clic en el botón para cambiar el estado
+                                    </small>
+                                </div>
+                                @error('resultado_apto')
+                                    <div class="text-danger small">{{ $message }}</div>
+                                @enderror
+                            </div>
 
                             <!-- Dirección IPS -->
                             <div class="mb-3">
@@ -204,28 +199,34 @@
             const textoResultado = document.getElementById('resultadoTexto');
             const btn = document.getElementById('btnResultado');
             
+            // Verificar el valor actual
             if (hiddenInput.value === '0') {
+                // Cambiar a VERDADERO
                 hiddenInput.value = '1';
                 textoResultado.textContent = 'Verdadero ✅';
-                btn.classList.remove('btn-outline-secondary');
-                btn.classList.add('btn-success');
+                btn.className = 'btn btn-toggle btn-success';  // Cambiar a btn-success
             } else {
+                // Cambiar a FALSO
                 hiddenInput.value = '0';
                 textoResultado.textContent = 'Falso ❌';
-                btn.classList.remove('btn-success');
-                btn.classList.add('btn-outline-secondary');
+                btn.className = 'btn btn-toggle btn-outline-secondary';  // Cambiar a btn-outline-secondary
             }
         }
 
-        // Mantener el estado si hay error de validación
+        // Mantener el estado si hay error de validación o al cargar la página
         document.addEventListener('DOMContentLoaded', function() {
-            const valorActual = document.getElementById('resultado_apto').value;
-            if (valorActual === '1') {
-                const textoResultado = document.getElementById('resultadoTexto');
-                const btn = document.getElementById('btnResultado');
+            const hiddenInput = document.getElementById('resultado_apto');
+            const textoResultado = document.getElementById('resultadoTexto');
+            const btn = document.getElementById('btnResultado');
+            
+            // Si el valor es 1 (Verdadero) - estado inicial
+            if (hiddenInput.value === '1') {
                 textoResultado.textContent = 'Verdadero ✅';
-                btn.classList.remove('btn-outline-secondary');
-                btn.classList.add('btn-success');
+                btn.className = 'btn btn-toggle btn-success';
+            } else {
+                // Si es 0 (Falso)
+                textoResultado.textContent = 'Falso ❌';
+                btn.className = 'btn btn-toggle btn-outline-secondary';
             }
         });
     </script>
