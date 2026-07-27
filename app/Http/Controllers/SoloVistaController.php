@@ -88,7 +88,8 @@ public function buscar(Request $request)
 }
     
     //  MÉTODO DE DEPURACIÓN - REEMPLAZA EL ANTERIOR
-public function verDocumentos($cedula)
+
+    public function verDocumentos($cedula)
 {
     try {
         $prefijosPermitidos = $this->getUserAllowedPrefixes();
@@ -100,6 +101,11 @@ public function verDocumentos($cedula)
         $descripcionPrefijos = \App\Models\Prefijo::whereIn('prefijo', $prefijosPermitidos)
             ->pluck('descripcion', 'prefijo')
             ->toArray();
+        
+        // 🔥 NUEVO: Sobrescribir la descripción para el prefijo VF
+        if (isset($descripcionPrefijos['VF'])) {
+            $descripcionPrefijos['VF'] = 'Psicología';
+        }
         
         $cita = CitaRecibida::where('cedula', $cedula)->first();
         
@@ -123,6 +129,11 @@ public function verDocumentos($cedula)
                 
                 if (!empty($prefijo) && in_array($prefijo, $prefijosPermitidos)) {
                     $descripcion = $descripcionPrefijos[$prefijo] ?? 'Sin descripción';
+                    
+                    // 🔥 NUEVO: Si el prefijo es VF, forzar descripción a "Psicología"
+                    if ($prefijo === 'VF') {
+                        $descripcion = 'Psicología';
+                    }
                     
                     $pdfs[] = [
                         'nombre' => $nombreArchivo,
@@ -149,7 +160,11 @@ public function verDocumentos($cedula)
         return back()->with('mensaje', 'Error al cargar los documentos: ' . $e->getMessage());
     }
 }
-    
+
+
+
+
+
     public function verPdf($id, Request $request)
     {
         try {
