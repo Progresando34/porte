@@ -254,6 +254,65 @@ public function truncarTabla(Request $request)
     }
 }
 
+
+/**
+ * MODIFICAR LA ESTRUCTURA DE LA TABLA PARA ACEPTAR APLAZADO (2)
+ * ⚠️ ESTA OPERACIÓN MODIFICA LA ESTRUCTURA DE LA TABLA
+ */
+public function modificarColumnaResultado(Request $request)
+{
+    try {
+        Log::warning('⚠️ MODIFICANDO COLUMNA resultado_apto - IP: ' . $request->ip());
+        
+        // Verificar el tipo actual de la columna
+        $columnInfo = DB::select("SHOW COLUMNS FROM certificados_armas LIKE 'resultado_apto'");
+        
+        if (empty($columnInfo)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La columna resultado_apto no existe en la tabla'
+            ], 404);
+        }
+        
+        $tipoActual = $columnInfo[0]->Type ?? 'unknown';
+        Log::info("Tipo actual de la columna: {$tipoActual}");
+        
+        // Si ya es TINYINT(2) o superior, no hacer nada
+        if (strpos($tipoActual, 'tinyint(2)') !== false || strpos($tipoActual, 'tinyint(3)') !== false) {
+            return response()->json([
+                'success' => true,
+                'message' => "La columna ya soporta valores hasta 2. Tipo actual: {$tipoActual}",
+                'tipo_actual' => $tipoActual,
+                'ya_modificada' => true
+            ]);
+        }
+        
+        // MODIFICAR LA COLUMNA
+        DB::statement('ALTER TABLE certificados_armas MODIFY resultado_apto TINYINT(2) NOT NULL DEFAULT 0');
+        
+        Log::info('✅ Columna resultado_apto modificada a TINYINT(2)');
+        
+        // Verificar después de la modificación
+        $columnInfoNuevo = DB::select("SHOW COLUMNS FROM certificados_armas LIKE 'resultado_apto'");
+        $tipoNuevo = $columnInfoNuevo[0]->Type ?? 'unknown';
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Columna resultado_apto modificada exitosamente de TINYINT(1) a TINYINT(2)',
+            'tipo_anterior' => $tipoActual,
+            'tipo_nuevo' => $tipoNuevo,
+            'ya_modificada' => false
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('ERROR modificando columna: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al modificar la columna: ' . $e->getMessage()
+        ], 500);
+    }
+}
 /**
  * Verificar el estado actual de la tabla
  */

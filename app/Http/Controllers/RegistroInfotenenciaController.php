@@ -16,9 +16,9 @@ class RegistroInfotenenciaController extends Controller
     // 🔥 STORE CORREGIDO
     public function store(Request $request)
     {
-        // Validación de datos
+        // Validación de datos - ACEPTA 0, 1 y 2
         $validated = $request->validate([
-            'resultado_apto' => 'required|in:0,1,2', // 🔥 ACEPTA 0, 1 y 2
+            'resultado_apto' => 'required|in:0,1,2', // 🔥 CAMBIADO
             'direccion_ips' => 'required|string',
             'sede_ips' => 'required|string',
             'nombre' => 'required|string|max:255',
@@ -42,9 +42,10 @@ class RegistroInfotenenciaController extends Controller
             ->with('success', 'Registro guardado exitosamente. ID: ' . $certificado->id);
     }
 
+    // 🔥 LISTAR CORREGIDO (orden ascendente)
     public function listar()
     {
-        $certificados = Certificado::orderBy('id', 'asc')->get();
+        $certificados = Certificado::orderBy('id', 'asc')->get(); // 🔥 CAMBIADO
         return view('registro-infotenencia.listar', compact('certificados'));
     }
 
@@ -59,9 +60,9 @@ class RegistroInfotenenciaController extends Controller
     {
         $certificado = Certificado::findOrFail($id);
 
-        // Validación de datos
+        // Validación de datos - ACEPTA 0, 1 y 2
         $validated = $request->validate([
-            'resultado_apto' => 'required|in:0,1,2', // 🔥 ACEPTA 0, 1 y 2
+            'resultado_apto' => 'required|in:0,1,2', // 🔥 CAMBIADO
             'direccion_ips' => 'required|string',
             'sede_ips' => 'required|string',
             'nombre' => 'required|string|max:255',
