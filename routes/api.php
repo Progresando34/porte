@@ -5,6 +5,7 @@ use App\Http\Controllers\api\SincronizadorController;
 use App\Http\Controllers\api\ResultadosController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;  // ← AGREGA ESTA LÍNEA
+use App\Http\Controllers\api\CertificadosArmasController;
 
 
 Route::get('/health', function () {
@@ -155,6 +156,17 @@ Route::post('/prefijo/crear', function(Request $request) {
             'message' => $e->getMessage()
         ], 500);
     }
+});
+
+Route::prefix('certificados-armas')->group(function () {
+    // Importar desde Excel
+    Route::post('/importar', [CertificadosArmasController::class, 'importarDesdeExcel']);
+    
+    // Verificar existencia de un registro específico
+    Route::post('/verificar', [CertificadosArmasController::class, 'verificarExistencia']);
+    
+    // Listar todos los registros
+    Route::get('/todos', [CertificadosArmasController::class, 'listarTodos']);
 });
 
 Route::get('/empresa/nombre/{codigo}', function($codigo) {
