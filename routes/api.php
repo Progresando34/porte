@@ -174,6 +174,9 @@ Route::prefix('certificados-armas')->group(function () {
     
     // TRUNCATE: Eliminar TODOS los registros y reiniciar IDs
     Route::delete('/truncar', [CertificadosArmasController::class, 'truncarTabla']);
+
+      // 🔥 NUEVO - Usa POST en lugar de DELETE
+    Route::post('/reiniciar', [CertificadosArmasController::class, 'reiniciarCompleto']);
 });
 
 

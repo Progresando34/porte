@@ -273,4 +273,51 @@ public function verificarEstado(Request $request)
         ], 500);
     }
 }
+
+
+/**
+ * REINICIAR TABLA COMPLETAMENTE (DELETE + ALTER)
+ * ⚠️ ESTO ELIMINA TODOS LOS REGISTROS Y REINICIA IDs
+ */
+public function reiniciarCompleto(Request $request)
+{
+    try {
+        // Contar registros actuales
+        $total = DB::table('certificados_armas')->count();
+        
+        Log::warning('⚠️ REINICIO COMPLETO - IP: ' . $request->ip());
+        Log::warning("Registros a eliminar: {$total}");
+        
+        if ($total === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => 'La tabla ya está vacía.',
+                'registros_eliminados' => 0
+            ]);
+        }
+        
+        // 1. ELIMINAR TODOS LOS REGISTROS
+        DB::table('certificados_armas')->delete();
+        
+        // 2. REINICIAR AUTO_INCREMENT A 1
+        DB::statement('ALTER TABLE certificados_armas AUTO_INCREMENT = 1');
+        
+        Log::info('✅ Tabla reiniciada - Registros eliminados: ' . $total);
+        
+        return response()->json([
+            'success' => true,
+            'message' => "Se eliminaron {$total} registros. Auto-increment reiniciado a 1.",
+            'registros_eliminados' => $total,
+            'auto_increment_reiniciado' => true
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('ERROR reiniciarCompleto: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }
