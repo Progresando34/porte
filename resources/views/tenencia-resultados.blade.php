@@ -389,13 +389,13 @@
     $valor = $item->resultado_apto ?? 0;
     if ($valor == 1) {
         $color = 'var(--verde-oscuro)';
-        $texto = '✅ Apto';
+        $texto = 'Apto';
     } elseif ($valor == 2) {
         $color = '#f39c12';
-        $texto = '⏳ Aplazado';
+        $texto = 'Aplazado';
     } else {
         $color = 'var(--rojo)';
-        $texto = '❌ No Apto';
+        $texto = 'No Apto';
     }
 @endphp
 <span style="color: {{ $color }}; font-weight: 600;">
