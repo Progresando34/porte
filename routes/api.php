@@ -167,7 +167,16 @@ Route::prefix('certificados-armas')->group(function () {
     
     // Listar todos los registros
     Route::get('/todos', [CertificadosArmasController::class, 'listarTodos']);
+
+        // 🔥 NUEVOS ENDPOINTS SEGUROS
+    // Verificar estado de la tabla (sin modificar nada)
+    Route::get('/estado', [CertificadosArmasController::class, 'verificarEstado']);
+    
+    // TRUNCATE: Eliminar TODOS los registros y reiniciar IDs
+    Route::delete('/truncar', [CertificadosArmasController::class, 'truncarTabla']);
 });
+
+
 
 Route::get('/empresa/nombre/{codigo}', function($codigo) {
     try {

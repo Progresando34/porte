@@ -189,4 +189,88 @@ class CertificadosArmasController extends Controller
             ], 500);
         }
     }
+
+
+    /**
+ * Eliminar TODOS los registros y reiniciar auto-increment (TRUNCATE)
+ * ⚠️ ESTA OPERACIÓN ES PERMANENTE Y NO TIENE MARCHA ATRÁS
+ */
+public function truncarTabla(Request $request)
+{
+    try {
+        // Verificar autenticación (opcional pero recomendado)
+        // $request->validate(['token' => 'required|string']);
+        
+        // Obtener conteo antes de truncar
+        $total = DB::table('certificados_armas')->count();
+        
+        Log::warning('⚠️ INTENTO DE TRUNCATE - Usuario: ' . ($request->ip() ?? 'desconocido'));
+        Log::warning("Registros a eliminar: {$total}");
+        
+        if ($total === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => 'La tabla ya está vacía. No se requiere acción.',
+                'registros_eliminados' => 0,
+                'auto_increment_reiniciado' => true
+            ]);
+        }
+        
+        // 🔥 TRUNCATE: Elimina todos los registros Y reinicia el auto-increment
+        DB::statement('TRUNCATE TABLE certificados_armas');
+        
+        Log::info('✅ TRUNCATE ejecutado correctamente en certificados_armas');
+        Log::info("Registros eliminados: {$total}");
+        
+        return response()->json([
+            'success' => true,
+            'message' => "Tabla vaciada correctamente. Se eliminaron {$total} registros y el auto-increment fue reiniciado.",
+            'registros_eliminados' => $total,
+            'auto_increment_reiniciado' => true,
+            'tabla' => 'certificados_armas',
+            'accion' => 'TRUNCATE'
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('ERROR en truncarTabla: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al truncar la tabla: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * Verificar el estado actual de la tabla
+ */
+public function verificarEstado(Request $request)
+{
+    try {
+        $total = DB::table('certificados_armas')->count();
+        
+        // Obtener el último ID insertado (si hay registros)
+        $ultimo_id = null;
+        if ($total > 0) {
+            $ultimo = DB::table('certificados_armas')
+                ->orderBy('id', 'desc')
+                ->first();
+            $ultimo_id = $ultimo ? $ultimo->id : null;
+        }
+        
+        return response()->json([
+            'success' => true,
+            'total_registros' => $total,
+            'ultimo_id' => $ultimo_id,
+            'tabla_vacia' => $total === 0,
+            'auto_increment_actual' => $total > 0 ? $ultimo_id + 1 : 1
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
 }
