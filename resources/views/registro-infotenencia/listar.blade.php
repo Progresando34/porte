@@ -49,7 +49,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($certificados as $certificado)
+                                @foreach($certificados->sortBy('id') as $certificado)
                                     <tr>
                                         <td>{{ $certificado->id }}</td>
                                         <td>

@@ -268,7 +268,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($resultados->sortBy('id') as $index => $item)
+                                @foreach($resultados as $index => $item)
                                 <tr>
                                     <td>{{ $index + 1 }}</td>
                                     <td>
