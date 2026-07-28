@@ -13,11 +13,12 @@ class RegistroInfotenenciaController extends Controller
         return view('registro-infotenencia.index');
     }
 
+    // 🔥 STORE CORREGIDO
     public function store(Request $request)
     {
         // Validación de datos
         $validated = $request->validate([
-            'resultado_apto' => 'required|boolean',
+            'resultado_apto' => 'required|in:0,1,2', // 🔥 ACEPTA 0, 1 y 2
             'direccion_ips' => 'required|string',
             'sede_ips' => 'required|string',
             'nombre' => 'required|string|max:255',
@@ -43,25 +44,24 @@ class RegistroInfotenenciaController extends Controller
 
     public function listar()
     {
-        $certificados = Certificado::orderBy('created_at', 'desc')->get();
+        $certificados = Certificado::orderBy('id', 'asc')->get();
         return view('registro-infotenencia.listar', compact('certificados'));
     }
 
-    // EDITAR - Mostrar formulario con datos existentes
     public function edit($id)
     {
         $certificado = Certificado::findOrFail($id);
         return view('registro-infotenencia.edit', compact('certificado'));
     }
 
-    // ACTUALIZAR
+    // 🔥 UPDATE CORREGIDO
     public function update(Request $request, $id)
     {
         $certificado = Certificado::findOrFail($id);
 
         // Validación de datos
         $validated = $request->validate([
-            'resultado_apto' => 'required|boolean',
+            'resultado_apto' => 'required|in:0,1,2', // 🔥 ACEPTA 0, 1 y 2
             'direccion_ips' => 'required|string',
             'sede_ips' => 'required|string',
             'nombre' => 'required|string|max:255',
@@ -90,7 +90,6 @@ class RegistroInfotenenciaController extends Controller
             ->with('success', 'Registro actualizado exitosamente.');
     }
 
-    // ELIMINAR
     public function destroy($id)
     {
         $certificado = Certificado::findOrFail($id);
