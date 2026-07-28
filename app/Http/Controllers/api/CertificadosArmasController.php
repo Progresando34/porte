@@ -169,33 +169,39 @@ if ($registro['resultado_apto'] === 'APTO') {
     /**
      * Obtener todos los registros (para verificar)
      */
-    public function listarTodos()
-    {
-        try {
-            $registros = DB::table('certificados_armas')
-                ->orderBy('fecha_expedicion', 'desc')
-                ->orderBy('cedula')
-                ->get();
-            
-            // Convertir resultado_apto de vuelta a texto para mejor visualización
-            $registrosFormateados = $registros->map(function($item) {
-                $item->resultado_apto_texto = $item->resultado_apto == 1 ? 'APTO' : 'NO APTO';
-                return $item;
-            });
-            
-            return response()->json([
-                'success' => true,
-                'total' => count($registros),
-                'registros' => $registrosFormateados
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
+public function listarTodos()
+{
+    try {
+        $registros = DB::table('certificados_armas')
+            ->orderBy('id', 'asc')  // Ordenar por ID ascendente
+            ->get();
+        
+        // Convertir resultado_apto de vuelta a texto para mejor visualización
+        $registrosFormateados = $registros->map(function($item) {
+            // 🔥 CORREGIDO: Ahora soporta APTO, NO APTO y APLAZADO
+            if ($item->resultado_apto == 1) {
+                $item->resultado_apto_texto = 'APTO';
+            } elseif ($item->resultado_apto == 2) {
+                $item->resultado_apto_texto = 'APLAZADO';
+            } else {
+                $item->resultado_apto_texto = 'NO APTO';
+            }
+            return $item;
+        });
+        
+        return response()->json([
+            'success' => true,
+            'total' => count($registros),
+            'registros' => $registrosFormateados
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
 
 
     /**

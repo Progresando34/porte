@@ -383,13 +383,26 @@
                             <div class="detalle-item">
                                 <div class="label">Resultado Apto</div>
                                 <div class="value">
-                                    @php
-                                        $apto = $item->resultado_apto ?? false;
-                                        $color = $apto ? 'var(--verde-oscuro)' : 'var(--rojo)';
-                                    @endphp
-                                    <span style="color: {{ $color }}; font-weight: 600;">
-                                        {{ $apto ? '✅ Apto' : '❌ No Apto' }}
-                                    </span>
+
+
+@php
+    $valor = $item->resultado_apto ?? 0;
+    if ($valor == 1) {
+        $color = 'var(--verde-oscuro)';
+        $texto = '✅ Apto';
+    } elseif ($valor == 2) {
+        $color = '#f39c12';
+        $texto = '⏳ Aplazado';
+    } else {
+        $color = 'var(--rojo)';
+        $texto = '❌ No Apto';
+    }
+@endphp
+<span style="color: {{ $color }}; font-weight: 600;">
+    {{ $texto }}
+</span>
+
+
                                 </div>
                             </div>
                         </div>
