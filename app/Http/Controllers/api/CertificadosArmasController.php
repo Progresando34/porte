@@ -42,7 +42,7 @@ class CertificadosArmasController extends Controller
                         'fecha' => 'required|date',
                         'cedula' => 'required|string',
                         'nombre' => 'required|string',
-                        'resultado_apto' => 'required|in:APTO,NO APTO'
+                        'resultado_apto' => 'required|in:APTO,NO APTO,APLAZADO'
                     ]);
                     
                     if ($validator->fails()) {
@@ -66,7 +66,14 @@ class CertificadosArmasController extends Controller
                     }
                     
                     // 🔥 CONVERTIR APTO/NO APTO a booleano (tinyint)
-                    $resultado_booleano = $registro['resultado_apto'] === 'APTO' ? 1 : 0;
+                    // APTO = 1, NO APTO = 0, APLAZADO = 2
+if ($registro['resultado_apto'] === 'APTO') {
+    $resultado_booleano = 1;
+} elseif ($registro['resultado_apto'] === 'NO APTO') {
+    $resultado_booleano = 0;
+} else { // APLAZADO
+    $resultado_booleano = 2;
+}
                     
                     // PREPARAR DATOS PARA INSERCIÓN
                     $datos = [

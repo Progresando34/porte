@@ -68,25 +68,21 @@
                             @csrf
                             @method('PUT')
                             
-                            <!-- Resultado Apto -->
-                            <div class="mb-3">
-                                <label class="form-label fw-bold required">Resultado Apto</label>
-                                <div>
-                                    <button type="button" 
-                                            class="btn btn-toggle {{ $certificado->resultado_apto ? 'btn-success' : 'btn-outline-secondary' }}" 
-                                            id="btnResultado"
-                                            onclick="toggleResultado()">
-                                        <span id="resultadoTexto">{{ $certificado->resultado_apto ? 'Verdadero ✅' : 'Falso ❌' }}</span>
-                                    </button>
-                                    <input type="hidden" name="resultado_apto" id="resultado_apto" value="{{ $certificado->resultado_apto ? 1 : 0 }}">
-                                    <small class="text-muted d-block mt-1">
-                                        <i class="fas fa-info-circle"></i> Haz clic en el botón para cambiar el estado
-                                    </small>
-                                </div>
-                                @error('resultado_apto')
-                                    <div class="text-danger small">{{ $message }}</div>
-                                @enderror
-                            </div>
+<!-- Resultado -->
+<div class="mb-3">
+    <label class="form-label fw-bold required">Resultado</label>
+    <select class="form-select @error('resultado_apto') is-invalid @enderror" 
+            name="resultado_apto" 
+            id="resultado_apto" 
+            required>
+        <option value="1" {{ old('resultado_apto', $certificado->resultado_apto) == 1 ? 'selected' : '' }}>Apto</option>
+        <option value="0" {{ old('resultado_apto', $certificado->resultado_apto) == 0 ? 'selected' : '' }}>No Apto</option>
+        <option value="2" {{ old('resultado_apto', $certificado->resultado_apto) == 2 ? 'selected' : '' }}>Aplazado</option>
+    </select>
+    @error('resultado_apto')
+        <div class="text-danger small">{{ $message }}</div>
+    @enderror
+</div>
 
                             <!-- Dirección IPS -->
                             <div class="mb-3">

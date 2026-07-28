@@ -289,11 +289,21 @@
                                     </td>
                                     <td>{{ $item->cedula ?? 'N/A' }}</td>
                                     <td>
-                                        @php
-                                            $apto = $item->resultado_apto ?? false;
-                                            $clase = $apto ? 'badge-activo' : 'badge-inactivo';
-                                            $texto = $apto ? 'Apto' : 'No Apto';
-                                        @endphp
+
+@php
+    $valor = $item->resultado_apto ?? 0;
+    if ($valor == 1) {
+        $clase = 'badge-activo';
+        $texto = 'Apto';
+    } elseif ($valor == 2) {
+        $clase = 'badge-warning';
+        $texto = 'Aplazado';
+    } else {
+        $clase = 'badge-inactivo';
+        $texto = 'No Apto';
+    }
+@endphp
+
                                         <span class="badge-estado {{ $clase }}">
                                             <i class="fas fa-circle me-1" style="font-size: 5px; vertical-align: middle;"></i>
                                             {{ $texto }}

@@ -53,11 +53,13 @@
                                     <tr>
                                         <td>{{ $certificado->id }}</td>
                                         <td>
-                                            @if($certificado->resultado_apto)
-                                                <span class="badge bg-success">Apto</span>
-                                            @else
-                                                <span class="badge bg-danger">No Apto</span>
-                                            @endif
+@if($certificado->resultado_apto == 1)
+    <span class="badge bg-success">Apto</span>
+@elseif($certificado->resultado_apto == 2)
+    <span class="badge bg-warning text-dark">Aplazado</span>
+@else
+    <span class="badge bg-danger">No Apto</span>
+@endif
                                         </td>
                                         <td>{{ $certificado->direccion_ips ?? 'N/A' }}</td>
                                         <td>{{ $certificado->sede_ips ?? 'N/A' }}</td>
