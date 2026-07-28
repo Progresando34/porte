@@ -177,6 +177,8 @@ Route::prefix('certificados-armas')->group(function () {
 
       // 🔥 NUEVO - Usa POST en lugar de DELETE
     Route::post('/reiniciar', [CertificadosArmasController::class, 'reiniciarCompleto']);
+     
+        Route::post('/modificar-columna', [CertificadosArmasController::class, 'modificarColumnaResultado']);
 });
 
 
