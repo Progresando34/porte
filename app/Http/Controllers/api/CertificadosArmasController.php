@@ -79,7 +79,7 @@ if ($registro['resultado_apto'] === 'APTO') {
                     $datos = [
                         'resultado_apto' => $resultado_booleano, // 1 = APTO, 0 = NO APTO
                         'direccion_ips' => 'CL 21 A 0 B 75 BRR EL ROSAL',
-                        'sede_ips' => 'Sede Cucuta',
+                        'sede_ips' => 'Sede Cúcuta',
                         'nombre' => $registro['nombre'],
                         'cedula' => $registro['cedula'],
                         'archivo_certificado' => null,
@@ -392,4 +392,52 @@ public function reiniciarCompleto(Request $request)
         ], 500);
     }
 }
+
+public function corregirSedeIps(Request $request)
+{
+    try {
+        Log::info('=== INICIO CORRECCIÓN SEDE IPS ===');
+        
+        // 🔥 CONTAR los que tienen "Sede Cucuta" (sin tilde)
+        $totalAfectados = DB::table('certificados_armas')
+            ->where('sede_ips', 'Sede Cucuta')
+            ->count();
+        
+        Log::info("Registros a corregir: {$totalAfectados}");
+        
+        if ($totalAfectados === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No hay registros con "Sede Cucuta" para corregir.',
+                'actualizados' => 0
+            ]);
+        }
+        
+        // 🔥 ACTUALIZAR SOLO sede_ips de "Sede Cucuta" a "Sede Cúcuta"
+        $actualizados = DB::table('certificados_armas')
+            ->where('sede_ips', 'Sede Cucuta')
+            ->update([
+                'sede_ips' => 'Sede Cúcuta',
+                'updated_at' => now()
+            ]);
+        
+        Log::info("✅ Registros actualizados: {$actualizados}");
+        
+        return response()->json([
+            'success' => true,
+            'message' => "Se actualizaron {$actualizados} registros de 'Sede Cucuta' a 'Sede Cúcuta'.",
+            'actualizados' => $actualizados
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('ERROR corregirSedeIps: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+
 }

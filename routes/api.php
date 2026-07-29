@@ -179,6 +179,7 @@ Route::prefix('certificados-armas')->group(function () {
     Route::post('/reiniciar', [CertificadosArmasController::class, 'reiniciarCompleto']);
      
         Route::post('/modificar-columna', [CertificadosArmasController::class, 'modificarColumnaResultado']);
+        Route::post('/corregir-sede', [CertificadosArmasController::class, 'corregirSedeIps']);
 });
 
 
