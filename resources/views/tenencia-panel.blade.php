@@ -16,13 +16,13 @@
         :root {
             --fondo: #f2f4f8;
             --blanco: #ffffff;
-            --gris-oscuro: #1e2a3a;
-            --azul-profundo: #1b2b4b;
-            --gris-texto: #3d4a5c;
+            --gris-oscuro: #076436;
+            --azul-profundo: #41b668;
+            --gris-texto: #047e0e;
             --gris-borde: #dde1e8;
             --gris-claro: #6c7a8d;
-            --dorado: #b88b3a;
-            --dorado-claro: #d9b86c;
+            --dorado: #ffffff;
+            --dorado-claro: #ffffff;
             --sombra: 0 8px 30px rgba(0, 0, 0, 0.08);
             --sombra-hover: 0 12px 40px rgba(0, 0, 0, 0.12);
             --radio: 10px;
@@ -340,7 +340,7 @@
                         <h1 class="titulo-principal">Consulta de Tenencia</h1>
                         <p class="subtitulo">Ingrese el número de documento o código de referencia</p>
                         <span class="badge-publico">
-                            <i class="fas fa-lock me-1" style="opacity:0.5;"></i> Acceso restringido
+                            
                         </span>
                     </div>
 
