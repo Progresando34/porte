@@ -278,9 +278,7 @@
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="">
-                                                {{ substr($item->nombre ?? 'N', 0, 1) }}
-                                            </div>
+  
                                             <div>
                                                 <div style="font-weight: 500;">{{ $item->nombre ?? 'Sin nombre' }}</div>
                                                 <small style="color: var(--gris-claro);">ID: {{ $item->id }}</small>
