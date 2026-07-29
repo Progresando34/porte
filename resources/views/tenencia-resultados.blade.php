@@ -278,7 +278,7 @@
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="avatar">
+                                            <div class="">
                                                 {{ substr($item->nombre ?? 'N', 0, 1) }}
                                             </div>
                                             <div>

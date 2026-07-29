@@ -314,8 +314,7 @@
     <div class="header-institucional">
         <div class="container">
             <div class="logo-text">
-                <i class="fas fa-shield-alt"></i>
-                <span>Sistema de Consulta · Porte y Tenencia de Armas</span>
+                <span>Sistema de Consulta · Porte y Tenencia de Armas de Fuego</span>
             </div>
             <div class="header-badge">
                 <i class="far fa-clock me-1"></i> IPS PROGRESANDO EN SALUD
@@ -338,7 +337,7 @@
                     <!-- TÍTULOS -->
                     <div class="text-center mb-4">
                         <h1 class="titulo-principal">Consulta de Tenencia</h1>
-                        <p class="subtitulo">Ingrese el número de documento o código de referencia</p>
+                        <p class="subtitulo">Ingrese el número de documento</p>
                         <span class="badge-publico">
                             
                         </span>
@@ -355,7 +354,7 @@
                                         type="text" 
                                         class="input-busqueda" 
                                         name="busqueda" 
-                                        placeholder="Número de documento o código"
+                                        placeholder="Número de documento"
                                         required
                                         autofocus
                                     >
