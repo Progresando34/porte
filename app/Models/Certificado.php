@@ -21,7 +21,7 @@ class Certificado extends Model
         'fecha_expedicion',
     ];
 
-    // 🔥 ELIMINAR 'resultado_apto' DEL CAST
+    //  ELIMINAR 'resultado_apto' DEL CAST
     protected $casts = [
         // 'resultado_apto' => 'boolean',  // ← ELIMINAR ESTA LÍNEA
         'fecha_expedicion' => 'date',
