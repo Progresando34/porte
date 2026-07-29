@@ -281,7 +281,7 @@
   
                                             <div>
                                                 <div style="font-weight: 500;">{{ $item->nombre ?? 'Sin nombre' }}</div>
-                                                <small style="color: var(--gris-claro);">ID: {{ $item->id }}</small>
+                                               
                                             </div>
                                         </div>
                                     </td>

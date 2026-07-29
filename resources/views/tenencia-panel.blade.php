@@ -336,7 +336,7 @@
 
                     <!-- TÍTULOS -->
                     <div class="text-center mb-4">
-                        <h1 class="titulo-principal">Consulta de Tenencia</h1>
+                        <h1 class="titulo-principal">Panel de Consulta</h1>
                         <p class="subtitulo">Ingrese el número de documento</p>
                         <span class="badge-publico">
                             
