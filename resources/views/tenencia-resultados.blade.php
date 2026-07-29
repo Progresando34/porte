@@ -264,7 +264,7 @@
                                     <th>Cédula</th>
                                     <th>Resultado</th>
                                     <th>Dirección IPS</th>
-                                    <th class="text-center">Ver</th>
+                                    <th>Sede IPS</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -307,16 +307,16 @@
                                             {{ $texto }}
                                         </span>
                                     </td>
-                                    <td>
-                                        <small style="font-size: 0.75rem; color: var(--gris-medio);">
-                                            {{ $item->direccion_ips ?? 'N/A' }}
-                                        </small>
-                                    </td>
-                                    <td class="text-center">
-                                        <button class="btn-ver" data-bs-toggle="modal" data-bs-target="#detalleModal{{ $item->id }}">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    </td>
+<td>
+    <small style="font-size: 0.75rem; color: var(--gris-medio);">
+        {{ $item->direccion_ips ?? 'N/A' }}
+    </small>
+</td>
+<td>
+    <small style="font-size: 0.75rem; color: var(--gris-medio);">
+        {{ $item->sede_ips ?? 'N/A' }}
+    </small>
+</td>
                                 </tr>
                                 @endforeach
                             </tbody>
