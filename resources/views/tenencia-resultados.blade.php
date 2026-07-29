@@ -50,6 +50,12 @@
             color: var(--verde-oscuro);
             text-decoration: none;
         }
+
+        .badge-aplazado {
+    background: #fff3cd;  /* Amarillo claro */
+    color: #856404;        /* Texto oscuro para contraste */
+    border: 1px solid #ffe69c;
+}
         
         .card-panel-light {
             background: white;
@@ -294,7 +300,7 @@
         $clase = 'badge-activo';
         $texto = 'Apto';
     } elseif ($valor == 2) {
-        $clase = 'badge-warning';
+        $clase = 'badge-aplazado';
         $texto = 'Aplazado';
     } else {
         $clase = 'badge-inactivo';
