@@ -330,7 +330,7 @@
                 <!-- TARJETA PRINCIPAL -->
                 <div class="card-panel">
 
-                    <!-- LOGO (con opacidad y filtro sutil) -->
+                 
                     <div class="logo-container">
                         <img src="{{ asset('images/logoconjunto.png') }}" alt="Logo institucional">
                     </div>
