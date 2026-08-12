@@ -6,6 +6,8 @@ use App\Http\Controllers\api\ResultadosController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;  // ← AGREGA ESTA LÍNEA
 use App\Http\Controllers\api\CertificadosArmasController;
+use App\Http\Controllers\api\HistoriaController;  
+use Illuminate\Support\Facades\Log;
 
 
 Route::get('/health', function () {
@@ -180,6 +182,123 @@ Route::prefix('certificados-armas')->group(function () {
      
         Route::post('/modificar-columna', [CertificadosArmasController::class, 'modificarColumnaResultado']);
         Route::post('/corregir-sede', [CertificadosArmasController::class, 'corregirSedeIps']);
+});
+
+
+Route::get('/auditoria/archivos-prefijo-s', function() {
+    try {
+        $resultados = [
+            'total_archivos' => 0,
+            'total_cedulas' => 0,
+            'archivos' => [],
+            'resumen_por_cedula' => [],
+            'tamano_total_bytes' => 0,
+            'fecha_consulta' => now()->toDateTimeString(),
+            'advertencia' => '⚠️ ESTO ES SOLO UNA AUDITORÍA - NO SE ELIMINÓ NADA'
+        ];
+        
+        $rutaBase = storage_path('app/public/RESULTADOS');
+        
+        if (!is_dir($rutaBase)) {
+            return response()->json([
+                'error' => 'La carpeta RESULTADOS no existe',
+                'ruta' => $rutaBase
+            ], 404);
+        }
+        
+        // Recorrer todas las carpetas de cédulas
+        $carpetas = glob($rutaBase . '/*', GLOB_ONLYDIR);
+        $resultados['total_cedulas'] = count($carpetas);
+        
+        foreach ($carpetas as $carpeta) {
+            $cedula = basename($carpeta);
+            $archivosS = [];
+            $tamanoCedula = 0;
+            $cantidadCedula = 0;
+            
+            // Buscar archivos que EMPIECEN con 's' y tengan formato válido
+            foreach (glob($carpeta . '/s*.pdf') as $archivo) {
+                $nombre = basename($archivo);
+                
+                // 🔥 VALIDACIÓN ESTRICTA: SOLO prefijo 's' + 8 dígitos
+                if (preg_match('/^s\d{8}\.pdf$/i', $nombre)) {
+                    $tamano = filesize($archivo);
+                    $fechaMod = date('Y-m-d H:i:s', filemtime($archivo));
+                    
+                    $archivosS[] = [
+                        'nombre' => $nombre,
+                        'tamano_bytes' => $tamano,
+                        'tamano_humano' => $this->formatearTamano($tamano),
+                        'fecha_modificacion' => $fechaMod,
+                        'ruta_relativa' => 'RESULTADOS/' . $cedula . '/' . $nombre
+                    ];
+                    
+                    $tamanoCedula += $tamano;
+                    $cantidadCedula++;
+                    $resultados['tamano_total_bytes'] += $tamano;
+                }
+            }
+            
+            if ($cantidadCedula > 0) {
+                $resultados['archivos'][$cedula] = $archivosS;
+                $resultados['resumen_por_cedula'][$cedula] = [
+                    'cantidad' => $cantidadCedula,
+                    'tamano_total_bytes' => $tamanoCedula,
+                    'tamano_total_humano' => $this->formatearTamano($tamanoCedula)
+                ];
+                $resultados['total_archivos'] += $cantidadCedula;
+            }
+        }
+        
+        $resultados['tamano_total_humano'] = $this->formatearTamano($resultados['tamano_total_bytes']);
+        
+        // 🔥 REGISTRAR EN LOGS PARA AUDITORÍA
+        Log::warning('AUDITORÍA DE ARCHIVOS CON PREFIJO S', [
+            'total_archivos' => $resultados['total_archivos'],
+            'total_cedulas_afectadas' => count($resultados['resumen_por_cedula']),
+            'tamano_total' => $resultados['tamano_total_humano'],
+            'fecha' => $resultados['fecha_consulta']
+        ]);
+        
+        return response()->json($resultados);
+        
+    } catch (\Exception $e) {
+        Log::error('Error en auditoría: ' . $e->getMessage());
+        return response()->json([
+            'error' => 'Error en auditoría',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});
+
+// Helper function (ponerlo en un helper o en el controlador)
+function formatearTamano($bytes) {
+    if ($bytes >= 1073741824) {
+        return number_format($bytes / 1073741824, 2) . ' GB';
+    } elseif ($bytes >= 1048576) {
+        return number_format($bytes / 1048576, 2) . ' MB';
+    } elseif ($bytes >= 1024) {
+        return number_format($bytes / 1024, 2) . ' KB';
+    } else {
+        return $bytes . ' bytes';
+    }
+}
+
+
+
+
+// ============================================
+// 🔥 NUEVAS RUTAS PARA HISTORIA CLÍNICA
+// ============================================
+Route::prefix('historia')->group(function () {
+    // Importar registros de historia clínica
+    Route::post('/importar', [HistoriaController::class, 'importar']);
+    
+    // Verificar si un registro existe (para evitar duplicados)
+    Route::post('/verificar', [HistoriaController::class, 'verificarExistencia']);
+    
+    // Obtener resumen de importaciones
+    Route::get('/resumen', [HistoriaController::class, 'resumen']);
 });
 
 
