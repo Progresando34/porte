@@ -404,7 +404,7 @@
 
 
 document.addEventListener('DOMContentLoaded', function() {
-    // ✅ MAPEO DE PREFIJOS A NOMBRES DESCRIPTIVOS
+    // MAPEO DE PREFIJOS A NOMBRES DESCRIPTIVOS
     const mapaPrefijos = {
         'H': 'Historia Clínica',
         'C': 'Certificado Médico',
