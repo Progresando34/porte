@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use App\Models\CitaRecibida;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use ZipArchive; 
 
 class SoloVistaController extends Controller
 {
@@ -248,7 +249,7 @@ public function consultarMultiples(Request $request)
 
 // app/Http/Controllers/SoloVistaController.php
 
-use ZipArchive; // Asegúrate de importar al inicio
+
 
 /**
  * Descarga una carpeta comprimida con todas las carpetas de las cédulas consultadas
@@ -355,7 +356,7 @@ public function descargarCarpetaCompleta(Request $request)
         $zipNombre = 'Carpeta_Completa_' . date('Y-m-d_H-i-s') . '.zip';
         $zipRuta = storage_path('app/temp/' . $zipNombre);
         
-        $zip = new ZipArchive();
+       $zip = new \ZipArchive();
         if ($zip->open($zipRuta, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             throw new \Exception('No se pudo crear el archivo ZIP');
         }
