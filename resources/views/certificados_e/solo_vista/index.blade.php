@@ -556,7 +556,7 @@
     </li>
     <li>
         <a href="{{ route('solo_vista.carpeta_completa') }}">
-            <i></i> 📁 Carpeta Completa
+            <i></i> Carpeta Completa
         </a>
     </li>
     <li>
