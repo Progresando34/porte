@@ -107,6 +107,62 @@ Route::post('/perfil/crear', function(Request $request) {
     }
 });
 
+// ============================================
+// 🗑️ ELIMINACIÓN DE ARCHIVOS CON PREFIJO 's'
+// ============================================
+Route::delete('/eliminar/archivos-prefijo-s', function() {
+    try {
+        $rutaBase = storage_path('app/public/RESULTADOS');
+        $eliminados = 0;
+        $errores = [];
+        
+        // Verificar que la carpeta existe
+        if (!is_dir($rutaBase)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'La carpeta RESULTADOS no existe'
+            ], 404);
+        }
+        
+        // Recorrer todas las carpetas de cédulas
+        foreach (glob($rutaBase . '/*', GLOB_ONLYDIR) as $carpeta) {
+            $cedula = basename($carpeta);
+            
+            foreach (glob($carpeta . '/s*.pdf') as $archivo) {
+                $nombre = basename($archivo);
+                
+                // 🔥 VALIDACIÓN ESTRICTA: SOLO 's' + 8 dígitos
+                if (preg_match('/^s\d{8}\.pdf$/i', $nombre)) {
+                    if (unlink($archivo)) {
+                        $eliminados++;
+                        Log::info("🗑️ Archivo eliminado: {$cedula}/{$nombre}");
+                    } else {
+                        $errores[] = "No se pudo eliminar: {$cedula}/{$nombre}";
+                        Log::error("❌ Error eliminando: {$cedula}/{$nombre}");
+                    }
+                } else {
+                    Log::warning("⚠️ Archivo omitido (formato inválido): {$cedula}/{$nombre}");
+                }
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'eliminados' => $eliminados,
+            'errores' => count($errores),
+            'detalle_errores' => $errores,
+            'mensaje' => "Se eliminaron {$eliminados} archivos con prefijo 's'"
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('Error en eliminación de archivos s: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
 
 // Agrega esta ruta después de la ruta de perfiles
 Route::post('/prefijo/crear', function(Request $request) {
