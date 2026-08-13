@@ -640,6 +640,46 @@
                     </button>
                 </div>
 
+                <!-- CONTENEDOR DE RESULTADOS (se muestra después de la búsqueda) -->
+<div id="resultadosPanel" style="display: none; margin-top: 30px;">
+    <h3 style="margin-bottom: 15px;">📋 Resultados de la consulta</h3>
+    
+    <div id="tablaResultados" style="overflow-x: auto; margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <thead style="background: #1a1a2e; color: white;">
+                <tr>
+                    <th style="padding: 10px; text-align: left;">Cédula</th>
+                    <th style="padding: 10px; text-align: left;">Nombre</th>
+                    <th style="padding: 10px; text-align: left;">Empresa</th>
+                    <th style="padding: 10px; text-align: left;">NIT</th>
+                    <th style="padding: 10px; text-align: left;">Fecha</th>
+                    <th style="padding: 10px; text-align: center;">Exámenes</th>
+                    <th style="padding: 10px; text-align: center;">Estado</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTabla"></tbody>
+        </table>
+    </div>
+    
+    <div style="display: flex; justify-content: center; margin: 20px 0;">
+        <form id="formDescargaCarpeta" method="POST" action="{{ route('solo_vista.descargar.carpeta') }}">
+            @csrf
+            <input type="hidden" name="cedulas" id="cedulasSeleccionadas" value="">
+            
+            <button type="submit" 
+                    id="btnCarpetaCompleta"
+                    class="view-btn" 
+                    style="background: #28a745; color: white; padding: 15px 40px; font-size: 1.1rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 10px;"
+                    disabled>
+                📁 CARPETA COMPLETA
+                <span id="contadorCarpetas" style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; font-size: 0.8rem;"></span>
+            </button>
+        </form>
+    </div>
+    
+    <div id="mensajeEstado" style="text-align: center; color: #6c757d; font-size: 0.9rem; margin-top: 10px;"></div>
+</div>
+
 <!-- DESPUÉS del botón "Buscar Documentos", AGREGAR: -->
 
 <!-- CONTENEDOR DE RESULTADOS (se muestra después de la búsqueda) -->
@@ -933,4 +973,144 @@ document.addEventListener('click', function(event) {
 });
 </script>
 </body>
+
+<script>
+// SCRIPT PARA EL PANEL DE RESULTADOS (NO AFECTA LA BÚSQUEDA INDIVIDUAL)
+document.addEventListener('DOMContentLoaded', function() {
+    const formBusqueda = document.getElementById('busquedaForm');
+    
+    // Solo si el formulario existe
+    if (!formBusqueda) return;
+    
+    const resultadosPanel = document.getElementById('resultadosPanel');
+    const cuerpoTabla = document.getElementById('cuerpoTabla');
+    const btnCarpetaCompleta = document.getElementById('btnCarpetaCompleta');
+    const cedulasSeleccionadas = document.getElementById('cedulasSeleccionadas');
+    const contadorCarpetas = document.getElementById('contadorCarpetas');
+    const mensajeEstado = document.getElementById('mensajeEstado');
+    
+    formBusqueda.addEventListener('submit', function(e) {
+        const cedulasMultiple = document.getElementById('cedulas_multiple').value;
+        
+        // Solo usar AJAX si hay cédulas múltiples
+        if (!cedulasMultiple || cedulasMultiple.trim() === '') {
+            // Dejar que el formulario haga la búsqueda individual normalmente
+            return;
+        }
+        
+        // Prevenir el envío normal SOLO para cédulas múltiples
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading"></span> Consultando...';
+        
+        fetch('{{ route("solo_vista.consultar.multiples") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                cedulas_multiple: cedulasMultiple
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '🔍 Buscar Documentos';
+            
+            if (!data.success) {
+                alert('Error: ' + data.message);
+                return;
+            }
+            
+            cuerpoTabla.innerHTML = '';
+            let cedulasValidas = [];
+            let totalEncontrados = 0;
+            let totalConArchivos = 0;
+            
+            const resultados = data.resultados;
+            for (const [cedula, info] of Object.entries(resultados)) {
+                const fila = document.createElement('tr');
+                fila.style.borderBottom = '1px solid #dee2e6';
+                
+                if (!info.encontrado) {
+                    fila.innerHTML = `
+                        <td style="padding: 10px;"><strong>${cedula}</strong></td>
+                        <td style="padding: 10px; color: #dc3545;">No encontrado</td>
+                        <td style="padding: 10px;">-</td>
+                        <td style="padding: 10px;">-</td>
+                        <td style="padding: 10px;">-</td>
+                        <td style="padding: 10px; text-align: center;">-</td>
+                        <td style="padding: 10px; text-align: center;">
+                            <span style="background: #dc3545; color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem;">❌ Sin datos</span>
+                        </td>
+                    `;
+                    cuerpoTabla.appendChild(fila);
+                    continue;
+                }
+                
+                totalEncontrados++;
+                
+                const tieneArchivos = info.total_archivos > 0;
+                if (tieneArchivos) {
+                    totalConArchivos++;
+                    cedulasValidas.push(cedula);
+                }
+                
+                let examenesHtml = '';
+                if (info.examenes && info.examenes.length > 0) {
+                    examenesHtml = info.examenes.map(e => 
+                        `<span style="display: inline-block; background: #e9ecef; padding: 2px 8px; margin: 2px; border-radius: 4px; font-size: 0.75rem;">${e.nombre}</span>`
+                    ).join('');
+                } else {
+                    examenesHtml = '<span style="color: #6c757d; font-size: 0.8rem;">Sin exámenes</span>';
+                }
+                
+                fila.innerHTML = `
+                    <td style="padding: 10px;"><strong>${cedula}</strong></td>
+                    <td style="padding: 10px;">${info.nombre}</td>
+                    <td style="padding: 10px;">${info.nombre_empresa}</td>
+                    <td style="padding: 10px;">${info.nit_empresa}</td>
+                    <td style="padding: 10px;">${info.fecha}</td>
+                    <td style="padding: 10px; text-align: center; max-width: 200px;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 3px; justify-content: center;">
+                            ${examenesHtml}
+                        </div>
+                    </td>
+                    <td style="padding: 10px; text-align: center;">
+                        ${tieneArchivos 
+                            ? `<span style="background: #28a745; color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem;">✅ ${info.total_archivos} archivos</span>`
+                            : '<span style="background: #ffc107; color: #333; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem;">⚠️ Sin archivos</span>'
+                        }
+                    </td>
+                `;
+                cuerpoTabla.appendChild(fila);
+            }
+            
+            resultadosPanel.style.display = 'block';
+            
+            if (cedulasValidas.length > 0) {
+                btnCarpetaCompleta.disabled = false;
+                contadorCarpetas.textContent = `${cedulasValidas.length} carpeta(s)`;
+                mensajeEstado.innerHTML = `✅ ${totalConArchivos} de ${totalEncontrados} cédulas tienen archivos disponibles para descargar.`;
+                cedulasSeleccionadas.value = cedulasValidas.join(',');
+            } else {
+                btnCarpetaCompleta.disabled = true;
+                contadorCarpetas.textContent = '0 carpetas';
+                mensajeEstado.innerHTML = '⚠️ Ninguna cédula tiene archivos disponibles para descargar.';
+                cedulasSeleccionadas.value = '';
+            }
+        })
+        .catch(error => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '🔍 Buscar Documentos';
+            console.error('Error:', error);
+            alert('Error al consultar: ' + error.message);
+        });
+    });
+});
+</script>
+
 </html>
