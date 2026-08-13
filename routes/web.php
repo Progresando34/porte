@@ -71,6 +71,16 @@ Route::prefix('trabajador')->group(function () {
         ->name('trabajador.actualizar-password');
 });
 
+Route::post('/solo-vista/carpeta-completa', [SoloVistaController::class, 'descargarCarpetaCompleta'])
+    ->name('solo_vista.carpeta.completa');
+
+
+    Route::post('/solo-vista/obtener-info-cedulas', [SoloVistaController::class, 'obtenerInfoCedulas'])
+    ->name('solo_vista.obtener.info');
+    
+Route::post('/solo-vista/carpeta-completa', [SoloVistaController::class, 'descargarCarpetaCompleta'])
+    ->name('solo_vista.carpeta.completa');
+
 
 // ========== RUTAS PARA DOCUMENTOS ==========
 Route::get('/documento/{id}/ver', [CertificadoEController::class, 'verDocumento'])->name('documento.ver');

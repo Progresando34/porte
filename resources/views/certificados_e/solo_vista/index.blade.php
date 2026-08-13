@@ -23,6 +23,151 @@
             display: flex;
             min-height: 100vh;
         }
+
+        /* ========================================== */
+        /* ESTILOS PARA EL PANEL Y BOTÓN CARPETA COMPLETA */
+        /* ========================================== */
+
+        .btn-descarga {
+            background: linear-gradient(135deg, #0066cc, #004d99);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 102, 204, 0.4);
+            width: 100%;
+            max-width: 450px;
+        }
+        .btn-descarga:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 102, 204, 0.5);
+        }
+        .btn-descarga:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .panel-cedula {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e1e5eb;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        .panel-cedula:hover {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .panel-cedula-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 15px;
+        }
+        .panel-cedula-header .cedula-num {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #0066cc;
+        }
+        .panel-cedula-header .badge-archivos {
+            background: #28a745;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        .panel-cedula-header .badge-sin-archivos {
+            background: #ffc107;
+            color: #333;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .panel-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .panel-info-item {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+        .panel-info-item label {
+            font-size: 0.7rem;
+            color: #6c757d;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .panel-info-item .value {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+            word-break: break-word;
+        }
+
+        .panel-archivos-lista {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f0;
+        }
+        .panel-archivos-lista .tag-archivo {
+            background: #e9ecef;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            color: #495057;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .panel-archivos-lista .tag-prefijo {
+            background: #0066cc;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.65rem;
+            font-weight: bold;
+        }
+
+        .no-resultados {
+            text-align: center;
+            padding: 40px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            color: #6c757d;
+        }
+
+        .mensaje-exito {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #c3e6cb;
+        }
+        .mensaje-error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #f5c6cb;
+        }
         
         .sidebar-custom {
             width: 280px;
@@ -706,6 +851,35 @@
                         </div>
                     @endforeach
                 </div>
+
+                <!-- ========================================== -->
+                <!-- 🔥 PANEL DE RESULTADOS DETALLADOS -->
+                <!-- 🔥 Y BOTÓN CARPETA COMPLETA -->
+                <!-- ========================================== -->
+                <div class="resultados-container" style="margin-top: 40px; border-top: 3px solid #e9ecef; padding-top: 30px;">
+                    <h3 style="color: #0066cc; margin-bottom: 20px; text-align: center;">
+                        📋 Detalle de Documentos por Cédula
+                    </h3>
+                    
+                    <div id="panelResultados">
+                        <div class="no-resultados">
+                            <div class="loading" style="display: inline-block; width: 30px; height: 30px; border: 3px solid rgba(0,102,204,0.1); border-radius: 50%; border-top-color: #0066cc; animation: spin 0.8s linear infinite;"></div>
+                            <p style="margin-top: 10px;">Cargando información detallada...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e9ecef;">
+                        <button id="btnCarpetaCompleta" class="btn-descarga" onclick="descargarCarpetaCompleta()" style="display: none;">
+                            📦 DESCARGAR CARPETA COMPLETA
+                        </button>
+                        <div id="loadingCarpeta" style="display: none; text-align: center; padding: 20px;">
+                            <div class="loading" style="display: inline-block; width: 30px; height: 30px; border: 3px solid rgba(0,102,204,0.1); border-radius: 50%; border-top-color: #0066cc; animation: spin 0.8s linear infinite;"></div>
+                            <p style="margin-top: 10px; color: #6c757d;">Generando carpeta completa... Por favor espera.</p>
+                        </div>
+                        <div id="mensajeCarpeta" style="display: none; margin-top: 10px; padding: 15px; border-radius: 8px;"></div>
+                    </div>
+                </div>
+
             @elseif(isset($resultados))
                 <div class="mensaje warning">
                     No se encontraron documentos para las cédulas ingresadas.
@@ -720,8 +894,11 @@
 </div>
 
 <script>
-const menuToggle = document.getElementById('menuToggle');
-const sidebar = document.getElementById('sidebar');
+// ==========================================
+// MENÚ TOGGLE (EXISTENTE)
+// ==========================================
+var menuToggle = document.getElementById('menuToggle');
+var sidebar = document.getElementById('sidebar');
 
 if (menuToggle) {
     menuToggle.addEventListener('click', function() {
@@ -736,6 +913,111 @@ document.addEventListener('click', function(event) {
         }
     }
 });
-</script>
-</body>
-</html>
+
+// ==========================================
+// 🔥 FUNCIONES PARA EL PANEL Y CARPETA COMPLETA
+// ==========================================
+
+var cedulasIniciales = [];
+
+@if(isset($resultados) && !empty($resultados))
+    cedulasIniciales = JSON.parse('{!! json_encode(array_keys($resultados)) !!}');
+@endif
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (cedulasIniciales.length > 0) {
+        cargarInfoCedulas(cedulasIniciales);
+    }
+});
+
+function cargarInfoCedulas(cedulas) {
+    var panelContainer = document.getElementById('panelResultados');
+    var btnCarpeta = document.getElementById('btnCarpetaCompleta');
+    
+    if (!panelContainer) return;
+    
+    fetch('{{ url("/solo-vista/obtener-info-cedulas") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ cedulas: cedulas })
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (!data.success) {
+            panelContainer.innerHTML = '<div class="no-resultados" style="color: #dc3545;">❌ Error al cargar información</div>';
+            return;
+        }
+        
+        var html = '';
+        var totalCedulasConArchivos = 0;
+        var cedulasList = [];
+        var resultados = data.resultados || {};
+        
+        for (var cedula in resultados) {
+            if (!resultados.hasOwnProperty(cedula)) continue;
+            
+            var info = resultados[cedula];
+            
+            if (!info.encontrado) {
+                html += '<div class="panel-cedula" style="border-left: 4px solid #dc3545;">' +
+                    '<div class="panel-cedula-header">' +
+                        '<span class="cedula-num">❌ ' + cedula + '</span>' +
+                        '<span style="color: #dc3545; font-size: 0.85rem;">No encontrado</span>' +
+                    '</div>' +
+                    '<p style="color: #dc3545; font-size: 0.9rem; margin: 0;">' + (info.mensaje || 'Cédula no encontrada') + '</p>' +
+                '</div>';
+                continue;
+            }
+            
+            if (info.total_archivos > 0) {
+                totalCedulasConArchivos++;
+                cedulasList.push(cedula);
+            }
+            
+            var archivosHtml = '';
+            if (info.archivos && info.archivos.length > 0) {
+                for (var i = 0; i < info.archivos.length; i++) {
+                    var a = info.archivos[i];
+                    archivosHtml += '<span class="tag-archivo"><span class="tag-prefijo">' + a.prefijo + '</span> ' + a.nombre + '</span>';
+                }
+            } else {
+                archivosHtml = '<span style="color: #6c757d; font-size: 0.85rem;">Sin archivos disponibles</span>';
+            }
+            
+            var badgeClass = info.total_archivos > 0 ? 'badge-archivos' : 'badge-sin-archivos';
+            var badgeText = info.total_archivos > 0 ? info.total_archivos + ' archivo(s)' : 'Sin archivos';
+            
+            html += '<div class="panel-cedula" style="border-left: 4px solid ' + (info.total_archivos > 0 ? '#28a745' : '#ffc107') + ';">' +
+                '<div class="panel-cedula-header">' +
+                    '<span class="cedula-num">📁 ' + info.cedula + '</span>' +
+                    '<span class="' + badgeClass + '">' + badgeText + '</span>' +
+                '</div>' +
+                '<div class="panel-info-grid">' +
+                    '<div class="panel-info-item"><label>Nombre</label><div class="value">' + (info.nombre || 'N/A') + '</div></div>' +
+                    '<div class="panel-info-item"><label>NIT Empresa</label><div class="value">' + (info.nit_empresa || 'N/A') + '</div></div>' +
+                    '<div class="panel-info-item"><label>Empresa</label><div class="value">' + (info.nombre_empresa || 'N/A') + '</div></div>' +
+                    '<div class="panel-info-item"><label>Fecha Cita</label><div class="value">' + (info.fecha_cita || 'N/A') + '</div></div>' +
+                    '<div class="panel-info-item"><label>Misión</label><div class="value">' + (info.mision || 'N/A') + '</div></div>' +
+                '</div>' +
+                '<div class="panel-archivos-lista">' + archivosHtml + '</div>' +
+            '</div>';
+        }
+        
+        panelContainer.innerHTML = html;
+        
+        if (totalCedulasConArchivos > 0) {
+            btnCarpeta.style.display = 'inline-block';
+            btnCarpeta.disabled = false;
+            btnCarpeta.dataset.cedulas = JSON.stringify(cedulasList);
+        } else {
+            btnCarpeta.style.display = 'none';
+        }
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        panelContainer.innerHTML = '<div class="
