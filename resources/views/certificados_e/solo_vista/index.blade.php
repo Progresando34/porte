@@ -548,23 +548,23 @@
             <p>Modo solo lectura</p>
         </div>
         
-        <ul class="nav-menu">
-            <li>
-                <a href="{{ route('solo_vista.index') }}" class="active">
-                    <i></i> Buscar Documentos
-                </a>
-            </li>
-            <li>
-                <a href="#">
-                    <i></i> Mis Consultas
-                </a>
-            </li>
-            <li>
-                <a href="#">
-                    <i></i> Ayuda
-                </a>
-            </li>
-        </ul>
+<ul class="nav-menu">
+    <li>
+        <a href="{{ route('solo_vista.index') }}" class="active">
+            <i></i> Buscar Documentos
+        </a>
+    </li>
+    <li>
+        <a href="{{ route('solo_vista.carpeta_completa') }}">
+            <i></i> 📁 Carpeta Completa
+        </a>
+    </li>
+    <li>
+        <a href="#">
+            <i></i> Ayuda
+        </a>
+    </li>
+</ul>
         
         <div class="logout-btn">
             <form method="POST" action="{{ route('logout') }}">

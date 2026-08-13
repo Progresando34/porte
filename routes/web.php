@@ -110,6 +110,11 @@ Route::prefix('solo-vista')->middleware('auth')->group(function () {
     Route::get('/ver-documentos/{cedula}', [SoloVistaController::class, 'verDocumentos'])->name('solo_vista.ver.documentos');
     Route::get('/ver-pdf/{id}', [SoloVistaController::class, 'verPdf'])->name('solo_vista.ver.pdf');
     Route::get('/ver-fusionados/{cedula}', [SoloVistaController::class, 'verFusionados'])->name('solo_vista.ver.fusionados');
+
+       // ✅ NUEVAS RUTAS PARA CARPETA COMPLETA (NO AFECTAN NADA)
+    Route::get('/carpeta-completa', [SoloVistaController::class, 'carpetaCompleta'])->name('solo_vista.carpeta_completa');
+    Route::post('/consultar-carpeta', [SoloVistaController::class, 'consultarCarpeta'])->name('solo_vista.consultar.carpeta');
+    Route::post('/descargar-carpeta-completa', [SoloVistaController::class, 'descargarCarpetaCompleta'])->name('solo_vista.descargar.carpeta.completa');
 });
      // Rayos X
     Route::get('/rayosx', [RayosXController::class, 'index'])->name('rayosx.index');
