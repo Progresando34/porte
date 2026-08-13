@@ -110,11 +110,6 @@ Route::prefix('solo-vista')->middleware('auth')->group(function () {
     Route::get('/ver-documentos/{cedula}', [SoloVistaController::class, 'verDocumentos'])->name('solo_vista.ver.documentos');
     Route::get('/ver-pdf/{id}', [SoloVistaController::class, 'verPdf'])->name('solo_vista.ver.pdf');
     Route::get('/ver-fusionados/{cedula}', [SoloVistaController::class, 'verFusionados'])->name('solo_vista.ver.fusionados');
-
-
-        // ✅ AGREGAR ESTAS 2 LÍNEAS NUEVAS:
-    Route::post('/consultar-multiples', [SoloVistaController::class, 'consultarMultiples'])->name('solo_vista.consultar.multiples');
-    Route::post('/descargar-carpeta-completa', [SoloVistaController::class, 'descargarCarpetaCompleta'])->name('solo_vista.descargar.carpeta');
 });
      // Rayos X
     Route::get('/rayosx', [RayosXController::class, 'index'])->name('rayosx.index');
@@ -128,8 +123,6 @@ Route::post('/rayosx', [RayosXController::class, 'store'])->name('rayosx.store')
 Route::delete('/rayosx/{id}', [RayosXController::class, 'destroy'])->name('rayosx.destroy'); // NUEVA RUTA
 
 });
-
-
 
 
 // ========== RUTAS PÚBLICAS ==========
