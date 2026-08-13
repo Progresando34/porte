@@ -71,16 +71,6 @@ Route::prefix('trabajador')->group(function () {
         ->name('trabajador.actualizar-password');
 });
 
-Route::post('/solo-vista/carpeta-completa', [SoloVistaController::class, 'descargarCarpetaCompleta'])
-    ->name('solo_vista.carpeta.completa');
-
-
-    Route::post('/solo-vista/obtener-info-cedulas', [SoloVistaController::class, 'obtenerInfoCedulas'])
-    ->name('solo_vista.obtener.info');
-    
-Route::post('/solo-vista/carpeta-completa', [SoloVistaController::class, 'descargarCarpetaCompleta'])
-    ->name('solo_vista.carpeta.completa');
-
 
 // ========== RUTAS PARA DOCUMENTOS ==========
 Route::get('/documento/{id}/ver', [CertificadoEController::class, 'verDocumento'])->name('documento.ver');
@@ -133,6 +123,16 @@ Route::post('/rayosx', [RayosXController::class, 'store'])->name('rayosx.store')
 Route::delete('/rayosx/{id}', [RayosXController::class, 'destroy'])->name('rayosx.destroy'); // NUEVA RUTA
 
 });
+
+// routes/web.php
+
+// Ruta para consulta múltiple (AJAX)
+Route::post('/solo-vista/consultar-multiples', [SoloVistaController::class, 'consultarMultiples'])
+    ->name('solo_vista.consultar.multiples');
+
+// Ruta para descargar carpeta completa
+Route::post('/solo-vista/descargar-carpeta-completa', [SoloVistaController::class, 'descargarCarpetaCompleta'])
+    ->name('solo_vista.descargar.carpeta');
 
 
 // ========== RUTAS PÚBLICAS ==========

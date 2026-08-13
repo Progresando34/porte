@@ -162,7 +162,261 @@ public function buscar(Request $request)
 }
 
 
+// app/Http/Controllers/SoloVistaController.php
 
+/**
+ * Consulta múltiples cédulas y devuelve datos estructurados
+ * para el panel de resultados
+ */
+public function consultarMultiples(Request $request)
+{
+    try {
+        $cedulasTexto = $request->input('cedulas_multiple', '');
+        $cedulas = array_filter(array_map('trim', explode("\n", $cedulasTexto)));
+        
+        if (empty($cedulas)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se ingresaron cédulas válidas'
+            ], 400);
+        }
+        
+        $resultados = [];
+        $prefijosPermitidos = $this->getUserAllowedPrefixes();
+        
+        foreach ($cedulas as $cedula) {
+            // Buscar la cita
+            $cita = CitaRecibida::where('cedula', $cedula)->first();
+            
+            if (!$cita) {
+                $resultados[$cedula] = [
+                    'encontrado' => false,
+                    'mensaje' => 'No se encontró registro para esta cédula'
+                ];
+                continue;
+            }
+            
+            // Obtener archivos físicos de la carpeta
+            $carpeta = storage_path('app/public/RESULTADOS/' . $cedula);
+            $archivos = [];
+            
+            if (is_dir($carpeta)) {
+                $archivosLista = scandir($carpeta);
+                foreach ($archivosLista as $archivo) {
+                    if ($archivo === '.' || $archivo === '..') continue;
+                    
+                    $prefijo = $this->extraerPrefijo($archivo);
+                    // Filtrar por prefijos permitidos del usuario
+                    if (in_array(strtoupper($prefijo), $prefijosPermitidos)) {
+                        $archivos[] = [
+                            'nombre' => $archivo,
+                            'prefijo' => strtoupper($prefijo),
+                            'ruta' => $carpeta . '/' . $archivo
+                        ];
+                    }
+                }
+                sort($archivos);
+            }
+            
+            $resultados[$cedula] = [
+                'encontrado' => true,
+                'cedula' => $cedula,
+                'nombre' => $cita->nombre ?? 'N/A',
+                'fecha' => $cita->fecha ? date('d/m/Y', strtotime($cita->fecha)) : 'N/A',
+                'nit_empresa' => $cita->nit_empresa ?? 'N/A',
+                'nombre_empresa' => $cita->nombre_empresa ?? 'N/A',
+                'mision' => $cita->mision ?? 'N/A',
+                'mision_empresa' => $cita->mision_empresa ?? 'N/A',
+                'total_archivos' => count($archivos),
+                'examenes' => $archivos
+            ];
+        }
+        
+        return response()->json([
+            'success' => true,
+            'resultados' => $resultados
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('Error en consultarMultiples: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al consultar: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+// app/Http/Controllers/SoloVistaController.php
+
+use ZipArchive; // Asegúrate de importar al inicio
+
+/**
+ * Descarga una carpeta comprimida con todas las carpetas de las cédulas consultadas
+ */
+public function descargarCarpetaCompleta(Request $request)
+{
+    try {
+        $cedulasTexto = $request->input('cedulas', '');
+        $cedulas = array_filter(array_map('trim', explode(',', $cedulasTexto)));
+        
+        if (empty($cedulas)) {
+            return back()->with('mensaje', 'No se seleccionaron cédulas para descargar');
+        }
+        
+        // Crear carpeta temporal
+        $tempDir = storage_path('app/temp/' . uniqid('carpeta_completa_'));
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0777, true);
+        }
+        
+        $carpetasIncluidas = 0;
+        $archivosIncluidos = 0;
+        $errores = [];
+        $prefijosPermitidos = $this->getUserAllowedPrefixes();
+        
+        foreach ($cedulas as $cedula) {
+            // 1. VALIDAR QUE LA CÉDULA EXISTA EN LA BD
+            $cita = CitaRecibida::where('cedula', $cedula)->first();
+            
+            if (!$cita) {
+                $errores[] = "Cédula {$cedula}: No existe en la base de datos";
+                continue;
+            }
+            
+            // 2. VALIDAR QUE LA CARPETA FÍSICA EXISTA
+            $carpetaOrigen = storage_path('app/public/RESULTADOS/' . $cedula);
+            
+            if (!is_dir($carpetaOrigen)) {
+                $errores[] = "Cédula {$cedula}: La carpeta de resultados no existe";
+                continue;
+            }
+            
+            // 3. VALIDACIÓN CRÍTICA: La carpeta DEBE llamarse igual que la cédula
+            if (basename($carpetaOrigen) !== $cedula) {
+                $errores[] = "Cédula {$cedula}: La carpeta no coincide con la cédula";
+                continue;
+            }
+            
+            // 4. OBTENER ARCHIVOS Y VALIDAR QUE HAYA AL MENOS UNO
+            $archivos = scandir($carpetaOrigen);
+            $archivosValidos = [];
+            
+            foreach ($archivos as $archivo) {
+                if ($archivo === '.' || $archivo === '..') continue;
+                
+                $rutaCompleta = $carpetaOrigen . '/' . $archivo;
+                
+                // Validar que sea un archivo (no carpeta)
+                if (!is_file($rutaCompleta)) continue;
+                
+                // Validar prefijo permitido
+                $prefijo = $this->extraerPrefijo($archivo);
+                if (!in_array(strtoupper($prefijo), $prefijosPermitidos)) {
+                    continue;
+                }
+                
+                $archivosValidos[] = $archivo;
+            }
+            
+            if (empty($archivosValidos)) {
+                $errores[] = "Cédula {$cedula}: No tiene archivos válidos con los prefijos permitidos";
+                continue;
+            }
+            
+            // 5. CREAR SUBCARPETA EN EL TEMPORAL
+            $carpetaDestino = $tempDir . '/' . $cedula;
+            if (!is_dir($carpetaDestino)) {
+                mkdir($carpetaDestino, 0777, true);
+            }
+            
+            // 6. COPIAR ARCHIVOS VALIDANDO UNO POR UNO
+            foreach ($archivosValidos as $archivo) {
+                $origen = $carpetaOrigen . '/' . $archivo;
+                $destino = $carpetaDestino . '/' . $archivo;
+                
+                if (copy($origen, $destino)) {
+                    $archivosIncluidos++;
+                } else {
+                    $errores[] = "Cédula {$cedula}: Error al copiar archivo {$archivo}";
+                }
+            }
+            
+            $carpetasIncluidas++;
+        }
+        
+        // 7. VALIDAR QUE SE HAYAN INCLUIDO CARPETAS
+        if ($carpetasIncluidas === 0) {
+            // Eliminar carpeta temporal
+            $this->eliminarDirectorio($tempDir);
+            return back()->with('mensaje', 'No se pudo incluir ninguna carpeta. Errores: ' . implode('; ', $errores));
+        }
+        
+        // 8. CREAR ARCHIVO ZIP
+        $zipNombre = 'Carpeta_Completa_' . date('Y-m-d_H-i-s') . '.zip';
+        $zipRuta = storage_path('app/temp/' . $zipNombre);
+        
+        $zip = new ZipArchive();
+        if ($zip->open($zipRuta, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new \Exception('No se pudo crear el archivo ZIP');
+        }
+        
+        // Agregar la carpeta temporal al ZIP
+        $this->agregarDirectorioAZip($tempDir, $zip, '');
+        $zip->close();
+        
+        // 9. ELIMINAR CARPETA TEMPORAL
+        $this->eliminarDirectorio($tempDir);
+        
+        // 10. DESCARGAR EL ZIP
+        return response()->download($zipRuta, $zipNombre)->deleteFileAfterSend(true);
+        
+    } catch (\Exception $e) {
+        Log::error('Error en descargarCarpetaCompleta: ' . $e->getMessage());
+        return back()->with('mensaje', 'Error al generar la carpeta completa: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Agrega recursivamente un directorio a un archivo ZIP
+ */
+private function agregarDirectorioAZip($directorio, $zip, $subcarpeta)
+{
+    $items = scandir($directorio);
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') continue;
+        
+        $ruta = $directorio . '/' . $item;
+        $nombreEnZip = empty($subcarpeta) ? $item : $subcarpeta . '/' . $item;
+        
+        if (is_dir($ruta)) {
+            $zip->addEmptyDir($nombreEnZip);
+            $this->agregarDirectorioAZip($ruta, $zip, $nombreEnZip);
+        } else {
+            $zip->addFile($ruta, $nombreEnZip);
+        }
+    }
+}
+
+/**
+ * Elimina recursivamente un directorio
+ */
+private function eliminarDirectorio($directorio)
+{
+    if (!is_dir($directorio)) return;
+    
+    $items = scandir($directorio);
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') continue;
+        
+        $ruta = $directorio . '/' . $item;
+        if (is_dir($ruta)) {
+            $this->eliminarDirectorio($ruta);
+        } else {
+            unlink($ruta);
+        }
+    }
+    rmdir($directorio);
+}
 
 
     public function verPdf($id, Request $request)
@@ -219,199 +473,4 @@ public function buscar(Request $request)
             return back()->with('mensaje', 'Error al cargar los documentos fusionados');
         }
     }
-
-        public function descargarCarpetaCompleta(Request $request)
-    {
-        try {
-            $cedulas = $request->input('cedulas', []);
-            
-            if (empty($cedulas)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se seleccionaron cédulas'
-                ], 400);
-            }
-            
-            // Validar que el usuario tenga permisos
-            $prefijosPermitidos = $this->getUserAllowedPrefixes();
-            if (empty($prefijosPermitidos)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No tiene permisos para descargar documentos'
-                ], 403);
-            }
-            
-            // Crear ZIP temporal
-            $zipFileName = 'Carpeta_Completa_' . date('Ymd_His') . '.zip';
-            $zipPath = storage_path('app/temp/' . $zipFileName);
-            
-            // Asegurar que existe el directorio temp
-            if (!is_dir(storage_path('app/temp'))) {
-                mkdir(storage_path('app/temp'), 0777, true);
-            }
-            
-            $zip = new ZipArchive();
-            if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                throw new \Exception('No se pudo crear el archivo ZIP');
-            }
-            
-            $totalArchivos = 0;
-            $cedulasProcesadas = [];
-            
-            foreach ($cedulas as $cedula) {
-                $cedula = trim($cedula);
-                if (empty($cedula)) continue;
-                
-                // Verificar que la cédula existe en la base de datos
-                $cita = CitaRecibida::where('cedula', $cedula)->first();
-                if (!$cita) {
-                    Log::warning("Cédula no encontrada en BD: {$cedula}");
-                    continue;
-                }
-                
-                // Ruta de la carpeta de resultados
-                $carpetaOrigen = storage_path('app/public/RESULTADOS/' . $cedula);
-                
-                if (!is_dir($carpetaOrigen)) {
-                    Log::warning("Carpeta no existe: {$carpetaOrigen}");
-                    continue;
-                }
-                
-                // Crear subcarpeta dentro del ZIP para esta cédula
-                $zip->addEmptyDir($cedula);
-                
-                // Recorrer archivos en la carpeta
-                $archivos = glob($carpetaOrigen . '/*.pdf');
-                $archivos = array_merge($archivos, glob($carpetaOrigen . '/*.PDF'));
-                
-                foreach ($archivos as $archivo) {
-                    $nombreArchivo = basename($archivo);
-                    $prefijo = $this->extraerPrefijo($nombreArchivo);
-                    $prefijo = strtoupper($prefijo);
-                    
-                    // Verificar que el prefijo esté permitido
-                    if (!in_array($prefijo, $prefijosPermitidos)) {
-                        Log::debug("Archivo omitido (prefijo no permitido): {$nombreArchivo}");
-                        continue;
-                    }
-                    
-                    // Agregar archivo al ZIP dentro de la subcarpeta
-                    $zip->addFile($archivo, $cedula . '/' . $nombreArchivo);
-                    $totalArchivos++;
-                }
-                
-                $cedulasProcesadas[] = $cedula;
-            }
-            
-            $zip->close();
-            
-            if ($totalArchivos === 0) {
-                // Limpiar archivo ZIP vacío
-                if (file_exists($zipPath)) {
-                    unlink($zipPath);
-                }
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se encontraron archivos para las cédulas seleccionadas'
-                ], 404);
-            }
-            
-            // Descargar el archivo ZIP
-            return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
-            
-        } catch (\Exception $e) {
-            Log::error('Error en descargarCarpetaCompleta: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al generar la carpeta completa: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * 🔥 NUEVO: Obtener información detallada de cédulas para el panel
-     */
-    public function obtenerInfoCedulas(Request $request)
-    {
-        try {
-            $cedulas = $request->input('cedulas', []);
-            
-            if (empty($cedulas)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se enviaron cédulas'
-                ], 400);
-            }
-            
-            $prefijosPermitidos = $this->getUserAllowedPrefixes();
-            $resultados = [];
-            
-            foreach ($cedulas as $cedula) {
-                $cedula = trim($cedula);
-                if (empty($cedula)) continue;
-                
-                // Buscar la cita
-                $cita = CitaRecibida::where('cedula', $cedula)->first();
-                
-                if (!$cita) {
-                    $resultados[$cedula] = [
-                        'encontrado' => false,
-                        'mensaje' => 'Cédula no encontrada'
-                    ];
-                    continue;
-                }
-                
-                // Obtener archivos de la carpeta
-                $carpeta = storage_path('app/public/RESULTADOS/' . $cedula);
-                $archivos = [];
-                $totalArchivos = 0;
-                
-                if (is_dir($carpeta)) {
-                    $archivosLista = glob($carpeta . '/*.pdf');
-                    $archivosLista = array_merge($archivosLista, glob($carpeta . '/*.PDF'));
-                    
-                    foreach ($archivosLista as $archivo) {
-                        $nombre = basename($archivo);
-                        $prefijo = $this->extraerPrefijo($nombre);
-                        $prefijo = strtoupper($prefijo);
-                        
-                        if (in_array($prefijo, $prefijosPermitidos)) {
-                            $archivos[] = [
-                                'nombre' => $nombre,
-                                'prefijo' => $prefijo,
-                                'tamano' => filesize($archivo)
-                            ];
-                            $totalArchivos++;
-                        }
-                    }
-                }
-                
-                $resultados[$cedula] = [
-                    'encontrado' => true,
-                    'cedula' => $cedula,
-                    'nombre' => $cita->nombre ?? 'N/A',
-                    'nit_empresa' => $cita->nit_empresa ?? 'N/A',
-                    'nombre_empresa' => $cita->nombre_empresa ?? 'N/A',
-                    'fecha_cita' => $cita->fecha ? date('d/m/Y', strtotime($cita->fecha)) : 'N/A',
-                    'mision' => $cita->mision ?? 'N/A',
-                    'total_archivos' => $totalArchivos,
-                    'archivos' => $archivos
-                ];
-            }
-            
-            return response()->json([
-                'success' => true,
-                'resultados' => $resultados
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error en obtenerInfoCedulas: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener información: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
 }
