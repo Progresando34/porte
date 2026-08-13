@@ -400,8 +400,7 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const menuToggle = document.getElementById('menuToggle');
+
 
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -555,6 +554,7 @@ if (info.examenes && info.examenes.length > 0) {
         });
     });
 });
+
 </script>
 </body>
 </html>
