@@ -402,6 +402,33 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const menuToggle = document.getElementById('menuToggle');
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // ✅ MAPEO DE PREFIJOS A NOMBRES DESCRIPTIVOS
+    const mapaPrefijos = {
+        'H': 'Historia Clínica',
+        'C': 'Certificado Médico',
+        'A': 'Audiometría',
+        'EV': 'Examen de Voz',
+        'VIS': 'Visometría',
+        'VF': 'Psicología'
+    };
+
+    const menuToggle = document.getElementById('menuToggle');
+
+        // Función para extraer prefijo de un nombre de archivo
+    function extraerPrefijo(nombreArchivo) {
+        const match = nombreArchivo.match(/^([A-Za-z]+)/);
+        return match ? match[1].toUpperCase() : '';
+    }
+
+    // Función para obtener nombre descriptivo del examen
+    function obtenerNombreExamen(nombreArchivo) {
+        const prefijo = extraerPrefijo(nombreArchivo);
+        return mapaPrefijos[prefijo] || prefijo || nombreArchivo;
+    }
+
     const sidebar = document.getElementById('sidebar');
     if (menuToggle) {
         menuToggle.addEventListener('click', function() {
@@ -477,14 +504,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     cedulasValidas.push(cedula);
                 }
 
-                let examenesHtml = '';
-                if (info.examenes && info.examenes.length > 0) {
-                    examenesHtml = info.examenes.map(e => 
-                        `<span class="badge-examen">${e.nombre}</span>`
-                    ).join('');
-                } else {
-                    examenesHtml = '<span style="color:#6c757d;font-size:0.8rem;">Sin exámenes</span>';
-                }
+let examenesHtml = '';
+if (info.examenes && info.examenes.length > 0) {
+    examenesHtml = info.examenes.map(e => {
+        const nombreDescriptivo = obtenerNombreExamen(e.nombre);
+        return `<span class="badge-examen">${nombreDescriptivo}</span>`;
+    }).join('');
+} else {
+    examenesHtml = '<span style="color:#6c757d;font-size:0.8rem;">Sin exámenes</span>';
+}
 
                 fila.innerHTML = `
                     <td><strong>${cedula}</strong></td>
