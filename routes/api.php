@@ -114,7 +114,10 @@ Route::delete('/eliminar/archivos-prefijo-s', function() {
     try {
         $rutaBase = storage_path('app/public/RESULTADOS');
         $eliminados = 0;
-        $errores = [];
+        $errores = 0;
+        $archivosEncontrados = [];
+        $archivosOmitidos = [];
+        $fechaMinima = '20260514'; // 🔥 FECHA MÍNIMA
         
         // Verificar que la carpeta existe
         if (!is_dir($rutaBase)) {
@@ -128,30 +131,80 @@ Route::delete('/eliminar/archivos-prefijo-s', function() {
         foreach (glob($rutaBase . '/*', GLOB_ONLYDIR) as $carpeta) {
             $cedula = basename($carpeta);
             
+            // Buscar archivos que empiecen con 's'
             foreach (glob($carpeta . '/s*.pdf') as $archivo) {
                 $nombre = basename($archivo);
                 
-                // 🔥 VALIDACIÓN ESTRICTA: SOLO 's' + 8 dígitos
-                if (preg_match('/^s\d{8}\.pdf$/i', $nombre)) {
-                    if (unlink($archivo)) {
-                        $eliminados++;
-                        Log::info("🗑️ Archivo eliminado: {$cedula}/{$nombre}");
-                    } else {
-                        $errores[] = "No se pudo eliminar: {$cedula}/{$nombre}";
-                        Log::error("❌ Error eliminando: {$cedula}/{$nombre}");
+                // 🔥 VALIDACIÓN ESTRICTA: 's' + 8 dígitos + .pdf
+                if (preg_match('/^s(\d{8})\.pdf$/i', $nombre, $matches)) {
+                    $fechaArchivo = $matches[1]; // Extraer YYYYMMDD
+                    
+                    // 🔥 VALIDACIÓN DE FECHA: SOLO >= 20260514
+                    if ($fechaArchivo < $fechaMinima) {
+                        $archivosOmitidos[] = [
+                            'cedula' => $cedula,
+                            'nombre' => $nombre,
+                            'fecha' => $fechaArchivo,
+                            'motivo' => "Fecha {$fechaArchivo} < {$fechaMinima}"
+                        ];
+                        Log::info("⏭️ Archivo omitido (fecha antigua): {$cedula}/{$nombre} (fecha: {$fechaArchivo})");
+                        continue;
                     }
+                    
+                    // Archivo válido para eliminar
+                    $archivosEncontrados[] = [
+                        'cedula' => $cedula,
+                        'nombre' => $nombre,
+                        'fecha' => $fechaArchivo,
+                        'ruta' => $archivo,
+                        'tamano' => filesize($archivo)
+                    ];
                 } else {
                     Log::warning("⚠️ Archivo omitido (formato inválido): {$cedula}/{$nombre}");
                 }
             }
         }
         
+        // 🔥 Si no hay archivos para eliminar
+        if (empty($archivosEncontrados)) {
+            return response()->json([
+                'success' => true,
+                'mensaje' => 'No se encontraron archivos con prefijo "s" y fecha >= ' . $fechaMinima,
+                'eliminados' => 0,
+                'omitidos_por_fecha' => count($archivosOmitidos),
+                'archivos_omitidos' => $archivosOmitidos,
+                'archivos_encontrados' => []
+            ]);
+        }
+        
+        // 🔥 Eliminar SOLO los archivos validados
+        $erroresDetalle = [];
+        foreach ($archivosEncontrados as $archivoInfo) {
+            $archivo = $archivoInfo['ruta'];
+            $cedula = $archivoInfo['cedula'];
+            $nombre = $archivoInfo['nombre'];
+            $fecha = $archivoInfo['fecha'];
+            
+            if (unlink($archivo)) {
+                $eliminados++;
+                Log::info("🗑️ Archivo eliminado: {$cedula}/{$nombre} (fecha: {$fecha})");
+            } else {
+                $errores++;
+                $erroresDetalle[] = "No se pudo eliminar: {$cedula}/{$nombre}";
+                Log::error("❌ Error eliminando: {$cedula}/{$nombre}");
+            }
+        }
+        
         return response()->json([
             'success' => true,
             'eliminados' => $eliminados,
-            'errores' => count($errores),
-            'detalle_errores' => $errores,
-            'mensaje' => "Se eliminaron {$eliminados} archivos con prefijo 's'"
+            'errores' => $errores,
+            'detalle_errores' => $erroresDetalle,
+            'omitidos_por_fecha' => count($archivosOmitidos),
+            'archivos_omitidos' => $archivosOmitidos,
+            'archivos_eliminados' => $archivosEncontrados,
+            'fecha_minima' => $fechaMinima,
+            'mensaje' => "Se eliminaron {$eliminados} archivos con prefijo 's' y fecha >= {$fechaMinima}"
         ]);
         
     } catch (\Exception $e) {
@@ -162,7 +215,6 @@ Route::delete('/eliminar/archivos-prefijo-s', function() {
         ], 500);
     }
 });
-
 
 // Agrega esta ruta después de la ruta de perfiles
 Route::post('/prefijo/crear', function(Request $request) {
@@ -243,6 +295,7 @@ Route::prefix('certificados-armas')->group(function () {
 
 Route::get('/auditoria/archivos-prefijo-s', function() {
     try {
+        $fechaMinima = '20260514';
         $resultados = [
             'total_archivos' => 0,
             'total_cedulas' => 0,
@@ -250,6 +303,8 @@ Route::get('/auditoria/archivos-prefijo-s', function() {
             'resumen_por_cedula' => [],
             'tamano_total_bytes' => 0,
             'fecha_consulta' => now()->toDateTimeString(),
+            'fecha_minima' => $fechaMinima,
+            'archivos_omitidos_por_fecha' => [],
             'advertencia' => '⚠️ ESTO ES SOLO UNA AUDITORÍA - NO SE ELIMINÓ NADA'
         ];
         
@@ -272,19 +327,33 @@ Route::get('/auditoria/archivos-prefijo-s', function() {
             $tamanoCedula = 0;
             $cantidadCedula = 0;
             
-            // Buscar archivos que EMPIECEN con 's' y tengan formato válido
+            // Buscar archivos que empiecen con 's'
             foreach (glob($carpeta . '/s*.pdf') as $archivo) {
                 $nombre = basename($archivo);
                 
-                // 🔥 VALIDACIÓN ESTRICTA: SOLO prefijo 's' + 8 dígitos
-                if (preg_match('/^s\d{8}\.pdf$/i', $nombre)) {
+                // 🔥 VALIDACIÓN ESTRICTA: 's' + 8 dígitos + .pdf
+                if (preg_match('/^s(\d{8})\.pdf$/i', $nombre, $matches)) {
+                    $fechaArchivo = $matches[1];
+                    
+                    // 🔥 VALIDACIÓN DE FECHA: SOLO >= 20260514
+                    if ($fechaArchivo < $fechaMinima) {
+                        $resultados['archivos_omitidos_por_fecha'][] = [
+                            'cedula' => $cedula,
+                            'nombre' => $nombre,
+                            'fecha' => $fechaArchivo,
+                            'motivo' => "Fecha {$fechaArchivo} < {$fechaMinima}"
+                        ];
+                        continue; // Saltar archivos con fecha antigua
+                    }
+                    
                     $tamano = filesize($archivo);
                     $fechaMod = date('Y-m-d H:i:s', filemtime($archivo));
                     
                     $archivosS[] = [
                         'nombre' => $nombre,
+                        'fecha_archivo' => $fechaArchivo,
                         'tamano_bytes' => $tamano,
-                        'tamano_humano' => $this->formatearTamano($tamano),
+                        'tamano_humano' => formatearTamano($tamano),
                         'fecha_modificacion' => $fechaMod,
                         'ruta_relativa' => 'RESULTADOS/' . $cedula . '/' . $nombre
                     ];
@@ -300,15 +369,14 @@ Route::get('/auditoria/archivos-prefijo-s', function() {
                 $resultados['resumen_por_cedula'][$cedula] = [
                     'cantidad' => $cantidadCedula,
                     'tamano_total_bytes' => $tamanoCedula,
-                    'tamano_total_humano' => $this->formatearTamano($tamanoCedula)
+                    'tamano_total_humano' => formatearTamano($tamanoCedula)
                 ];
                 $resultados['total_archivos'] += $cantidadCedula;
             }
         }
         
-        $resultados['tamano_total_humano'] = $this->formatearTamano($resultados['tamano_total_bytes']);
+        $resultados['tamano_total_humano'] = formatearTamano($resultados['tamano_total_bytes']);
         
-        // 🔥 REGISTRAR EN LOGS PARA AUDITORÍA
         Log::warning('AUDITORÍA DE ARCHIVOS CON PREFIJO S', [
             'total_archivos' => $resultados['total_archivos'],
             'total_cedulas_afectadas' => count($resultados['resumen_por_cedula']),
@@ -327,7 +395,7 @@ Route::get('/auditoria/archivos-prefijo-s', function() {
     }
 });
 
-// Helper function (ponerlo en un helper o en el controlador)
+// ✅ Helper function - CORREGIDO (sin $this)
 function formatearTamano($bytes) {
     if ($bytes >= 1073741824) {
         return number_format($bytes / 1073741824, 2) . ' GB';
@@ -339,6 +407,7 @@ function formatearTamano($bytes) {
         return $bytes . ' bytes';
     }
 }
+
 
 
 
