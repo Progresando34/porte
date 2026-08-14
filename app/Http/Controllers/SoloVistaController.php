@@ -433,6 +433,246 @@ public function buscar(Request $request)
         }
     }
 
+
+
+        /**
+     * Vista para PDF Unificado (NUEVA VISTA INDEPENDIENTE)
+     */
+    public function pdfUnificado()
+    {
+        $prefijosPermitidos = $this->getUserAllowedPrefixes();
+        return view('certificados_e.solo_vista.pdf_unificado', compact('prefijosPermitidos'));
+    }
+
+    /**
+     * Consulta para la vista de PDF Unificado (SOLO AJAX)
+     * Solo muestra cédulas que tengan archivos con prefijo H
+     */
+    public function consultarPdfUnificado(Request $request)
+    {
+        try {
+            $cedulasTexto = $request->input('cedulas_multiple', '');
+            $cedulas = array_filter(array_map('trim', explode("\n", $cedulasTexto)));
+            
+            if (empty($cedulas)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se ingresaron cédulas válidas'
+                ], 400);
+            }
+            
+            $resultados = [];
+            $prefijosPermitidos = $this->getUserAllowedPrefixes();
+            
+            foreach ($cedulas as $cedula) {
+                $cita = CitaRecibida::where('cedula', $cedula)->first();
+                
+                if (!$cita) {
+                    $resultados[$cedula] = [
+                        'encontrado' => false,
+                        'mensaje' => 'No se encontró registro para esta cédula'
+                    ];
+                    continue;
+                }
+                
+                $carpeta = storage_path('app/public/RESULTADOS/' . $cedula);
+                $archivosH = [];
+                
+                if (is_dir($carpeta)) {
+                    $archivosLista = scandir($carpeta);
+                    foreach ($archivosLista as $archivo) {
+                        if ($archivo === '.' || $archivo === '..') continue;
+                        
+                        $prefijo = $this->extraerPrefijo($archivo);
+                        // SOLO ARCHIVOS CON PREFIJO H
+                        if (strtoupper($prefijo) === 'H') {
+                            $archivosH[] = [
+                                'nombre' => $archivo,
+                                'prefijo' => 'H',
+                                'ruta' => $carpeta . '/' . $archivo
+                            ];
+                        }
+                    }
+                    sort($archivosH);
+                }
+                
+                $resultados[$cedula] = [
+                    'encontrado' => true,
+                    'cedula' => $cedula,
+                    'nombre' => $cita->nombre ?? 'N/A',
+                    'fecha' => $cita->fecha ? date('d/m/Y', strtotime($cita->fecha)) : 'N/A',
+                    'nit_empresa' => $cita->nit_empresa ?? 'N/A',
+                    'nombre_empresa' => $cita->nombre_empresa ?? 'N/A',
+                    'total_archivos_h' => count($archivosH),
+                    'examenes_h' => $archivosH
+                ];
+            }
+            
+            return response()->json([
+                'success' => true,
+                'resultados' => $resultados
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error en consultarPdfUnificado: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al consultar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Genera un PDF unificado con todos los archivos H de las cédulas seleccionadas
+     */
+    public function generarPdfUnificado(Request $request)
+    {
+        try {
+            $cedulasTexto = $request->input('cedulas', '');
+            $cedulas = array_filter(array_map('trim', explode(',', $cedulasTexto)));
+            
+            if (empty($cedulas)) {
+                return back()->with('mensaje', 'No se seleccionaron cédulas para generar el PDF');
+            }
+            
+            // Crear carpeta temporal
+            $tempDir = storage_path('app/temp/' . uniqid('pdf_unificado_'));
+            if (!is_dir($tempDir)) {
+                mkdir($tempDir, 0777, true);
+            }
+            
+            // Crear subcarpeta IPS90257
+            $carpetaIPS = $tempDir . '/IPS90257';
+            if (!is_dir($carpetaIPS)) {
+                mkdir($carpetaIPS, 0777, true);
+            }
+            
+            $archivosEncontrados = 0;
+            $errores = [];
+            $cedulasUsadas = [];
+            $primerNit = null;
+            
+            // Recolectar todos los archivos H
+            $archivosPdf = [];
+            
+            foreach ($cedulas as $cedula) {
+                $cita = CitaRecibida::where('cedula', $cedula)->first();
+                
+                if (!$cita) {
+                    $errores[] = "Cédula {$cedula}: No existe en la base de datos";
+                    continue;
+                }
+                
+                // Guardar el NIT de la primera cédula válida
+                if ($primerNit === null && $cita->nit_empresa) {
+                    $primerNit = $cita->nit_empresa;
+                }
+                
+                $carpetaOrigen = storage_path('app/public/RESULTADOS/' . $cedula);
+                
+                if (!is_dir($carpetaOrigen)) {
+                    $errores[] = "Cédula {$cedula}: La carpeta de resultados no existe";
+                    continue;
+                }
+                
+                $archivos = scandir($carpetaOrigen);
+                $cedulaTieneH = false;
+                
+                foreach ($archivos as $archivo) {
+                    if ($archivo === '.' || $archivo === '..') continue;
+                    
+                    $rutaCompleta = $carpetaOrigen . '/' . $archivo;
+                    
+                    if (!is_file($rutaCompleta)) continue;
+                    
+                    $prefijo = $this->extraerPrefijo($archivo);
+                    
+                    // SOLO ARCHIVOS CON PREFIJO H
+                    if (strtoupper($prefijo) === 'H') {
+                        $cedulaTieneH = true;
+                        $archivosPdf[] = [
+                            'ruta' => $rutaCompleta,
+                            'nombre' => $archivo,
+                            'cedula' => $cedula
+                        ];
+                        $archivosEncontrados++;
+                    }
+                }
+                
+                if ($cedulaTieneH) {
+                    $cedulasUsadas[] = $cedula;
+                } else {
+                    $errores[] = "Cédula {$cedula}: No tiene archivos con prefijo H";
+                }
+            }
+            
+            if (empty($archivosPdf)) {
+                $this->eliminarDirectorio($tempDir);
+                return back()->with('mensaje', 'No se encontraron archivos con prefijo H para las cédulas seleccionadas.');
+            }
+            
+            // Generar el nombre del PDF
+            $nombrePdf = 'FEV_' . ($primerNit ?? '000000000') . '_IPS90257.pdf';
+            $rutaPdfSalida = $carpetaIPS . '/' . $nombrePdf;
+            
+            // Usar FPDI + FPDF para unir los PDFs
+            $this->unirPdfs($archivosPdf, $rutaPdfSalida);
+            
+            // Crear ZIP con la carpeta IPS90257
+            $zipNombre = 'PDF_Unificado_' . date('Y-m-d_H-i-s') . '.zip';
+            $zipRuta = storage_path('app/temp/' . $zipNombre);
+            
+            $zip = new \ZipArchive();
+            if ($zip->open($zipRuta, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                throw new \Exception('No se pudo crear el archivo ZIP');
+            }
+            
+            $this->agregarDirectorioAZip($tempDir, $zip, '');
+            $zip->close();
+            
+            $this->eliminarDirectorio($tempDir);
+            
+            return response()->download($zipRuta, $zipNombre)->deleteFileAfterSend(true);
+            
+        } catch (\Exception $e) {
+            Log::error('Error en generarPdfUnificado: ' . $e->getMessage());
+            return back()->with('mensaje', 'Error al generar el PDF unificado: ' . $e->getMessage());
+        }
+    }
+
+private function unirPdfs($archivosPdf, $rutaSalida)
+{
+    // Verificar que la clase FPDI existe
+    if (!class_exists('\setasign\Fpdi\Fpdi')) {
+        throw new \Exception('La librería FPDI no está instalada. Ejecuta: composer require setasign/fpdi');
+    }
+    
+    $pdf = new \setasign\Fpdi\Fpdi();  // ← ESTO ES CORRECTO
+    
+    foreach ($archivosPdf as $archivo) {
+        $ruta = $archivo['ruta'];
+        
+        if (!file_exists($ruta)) continue;
+        
+        try {
+            $pageCount = $pdf->setSourceFile($ruta);
+            
+            for ($i = 1; $i <= $pageCount; $i++) {
+                $template = $pdf->importPage($i);
+                $size = $pdf->getTemplateSize($template);
+                
+                $pdf->AddPage($size['orientation'] ?? 'P', [$size['width'], $size['height']]);
+                $pdf->useTemplate($template);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error al importar PDF: ' . $e->getMessage());
+            // Continuar con el siguiente archivo
+        }
+    }
+    
+    $pdf->Output('F', $rutaSalida);
+}
+
     /**
      * Elimina recursivamente un directorio
      */

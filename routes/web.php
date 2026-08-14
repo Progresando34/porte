@@ -115,6 +115,11 @@ Route::prefix('solo-vista')->middleware('auth')->group(function () {
     Route::get('/carpeta-completa', [SoloVistaController::class, 'carpetaCompleta'])->name('solo_vista.carpeta_completa');
     Route::post('/consultar-carpeta', [SoloVistaController::class, 'consultarCarpeta'])->name('solo_vista.consultar.carpeta');
     Route::post('/descargar-carpeta-completa', [SoloVistaController::class, 'descargarCarpetaCompleta'])->name('solo_vista.descargar.carpeta.completa');
+
+
+    Route::get('/pdf-unificado', [SoloVistaController::class, 'pdfUnificado'])->name('solo_vista.pdf_unificado');
+    Route::post('/consultar-pdf-unificado', [SoloVistaController::class, 'consultarPdfUnificado'])->name('solo_vista.consultar.pdf_unificado');
+    Route::post('/generar-pdf-unificado', [SoloVistaController::class, 'generarPdfUnificado'])->name('solo_vista.generar.pdf_unificado');
 });
      // Rayos X
     Route::get('/rayosx', [RayosXController::class, 'index'])->name('rayosx.index');

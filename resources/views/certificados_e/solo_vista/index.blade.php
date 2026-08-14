@@ -550,7 +550,7 @@
         
 <ul class="nav-menu">
     <li>
-        <a href="{{ route('solo_vista.index') }}" class="active">
+        <a href="{{ route('solo_vista.index') }}">
             <i></i> Buscar Documentos
         </a>
     </li>
@@ -560,8 +560,8 @@
         </a>
     </li>
     <li>
-        <a href="#">
-            <i></i> Ayuda
+        <a href="{{ route('solo_vista.pdf_unificado') }}">
+            <i></i> PDF Unificado
         </a>
     </li>
 </ul>

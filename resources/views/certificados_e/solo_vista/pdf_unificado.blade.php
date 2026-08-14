@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Descarga de Carpeta Completa</title>
+    <title>PDF Unificado - Solo Visualización</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -184,18 +184,18 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(47, 201, 0, 0.3);
         }
-        .btn-descargar {
-            background: #28a745;
+        .btn-generar {
+            background: #007bff;
             color: white;
             padding: 15px 40px;
             font-size: 1.1rem;
         }
-        .btn-descargar:hover {
-            background: #218838;
+        .btn-generar:hover {
+            background: #0069d9;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
         }
-        .btn-descargar:disabled {
+        .btn-generar:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none !important;
@@ -301,8 +301,13 @@
                 </a>
             </li>
             <li>
-                <a href="{{ route('solo_vista.carpeta_completa') }}" class="active">
-                    <i></i>  Carpeta Completa
+                <a href="{{ route('solo_vista.carpeta_completa') }}">
+                    <i></i> 📁 Carpeta Completa
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('solo_vista.pdf_unificado') }}" class="active">
+                    <i></i> 📄 PDF Unificado
                 </a>
             </li>
         </ul>
@@ -322,13 +327,13 @@
     <div class="main-content">
         <div class="content-header">
             <div style="flex:1;">
-                <h1>Descarga de Carpeta Completa</h1>
-                <p class="subtitle">Selecciona múltiples cédulas y descarga todas sus carpetas en un solo ZIP</p>
+                <h1>📄 PDF Unificado</h1>
+                <p class="subtitle">Genera un PDF unificado con todos los documentos de prefijo H de múltiples cédulas</p>
             </div>
         </div>
         
         <div class="container-custom">
-            <h2>Consulta Múltiple para Descarga</h2>
+            <h2>Generar PDF Unificado (Prefijo H)</h2>
             
             @if(auth()->check())
             <div class="user-info">
@@ -346,7 +351,7 @@
             <div class="form-group">
                 <label for="cedulas_multiple">Cédulas (una por línea)</label>
                 <textarea id="cedulas_multiple" rows="4" placeholder="Ej:&#10;12345678&#10;87654321&#10;11122233"></textarea>
-                <small class="text-muted">Ingrese una cédula por línea. Solo se descargarán las que tengan archivos.</small>
+                <small class="text-muted">Ingrese una cédula por línea. Solo se incluirán las que tengan archivos con prefijo H.</small>
             </div>
 
             <button class="btn-buscar" id="btnConsultar">
@@ -366,7 +371,7 @@
                                 <th>Empresa</th>
                                 <th>NIT</th>
                                 <th>Fecha</th>
-                                <th style="text-align:center;">Exámenes</th>
+                                <th style="text-align:center;">Archivos H</th>
                                 <th style="text-align:center;">Estado</th>
                             </tr>
                         </thead>
@@ -375,16 +380,16 @@
                 </div>
                 
                 <div style="display: flex; justify-content: center; margin: 20px 0;">
-                    <form id="formDescarga" method="POST" action="{{ route('solo_vista.descargar.carpeta.completa') }}">
+                    <form id="formGenerar" method="POST" action="{{ route('solo_vista.generar.pdf_unificado') }}">
                         @csrf
                         <input type="hidden" name="cedulas" id="cedulasSeleccionadas" value="">
                         
                         <button type="submit" 
-                                id="btnDescargar"
-                                class="btn-descargar"
+                                id="btnGenerar"
+                                class="btn-generar"
                                 disabled>
-                             CARPETA COMPLETA
-                            <span id="contadorCarpetas" style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; font-size: 0.8rem;"></span>
+                              GENERAR PDF UNIFICADO
+                            <span id="contadorCedulas" style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; font-size: 0.8rem;"></span>
                         </button>
                     </form>
                 </div>
@@ -393,41 +398,15 @@
             </div>
 
             <div class="footer-note">
-                <p>Sistema de Gestión de Documentos - Descarga de Carpetas Completas</p>
+                <p>Sistema de Gestión de Documentos - Generación de PDF Unificado</p>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-
-
-
 document.addEventListener('DOMContentLoaded', function() {
-    // MAPEO DE PREFIJOS A NOMBRES DESCRIPTIVOS
-    const mapaPrefijos = {
-        'H': 'Historia Clínica',
-        'C': 'Certificado Médico',
-        'A': 'Audiometría',
-        'EV': 'Examen de Voz',
-        'VIS': 'Visometría',
-        'VF': 'Psicología'
-    };
-
     const menuToggle = document.getElementById('menuToggle');
-
-        // Función para extraer prefijo de un nombre de archivo
-    function extraerPrefijo(nombreArchivo) {
-        const match = nombreArchivo.match(/^([A-Za-z]+)/);
-        return match ? match[1].toUpperCase() : '';
-    }
-
-    // Función para obtener nombre descriptivo del examen
-    function obtenerNombreExamen(nombreArchivo) {
-        const prefijo = extraerPrefijo(nombreArchivo);
-        return mapaPrefijos[prefijo] || prefijo || nombreArchivo;
-    }
-
     const sidebar = document.getElementById('sidebar');
     if (menuToggle) {
         menuToggle.addEventListener('click', function() {
@@ -438,9 +417,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnConsultar = document.getElementById('btnConsultar');
     const resultadosPanel = document.getElementById('resultadosPanel');
     const cuerpoTabla = document.getElementById('cuerpoTabla');
-    const btnDescargar = document.getElementById('btnDescargar');
+    const btnGenerar = document.getElementById('btnGenerar');
     const cedulasSeleccionadas = document.getElementById('cedulasSeleccionadas');
-    const contadorCarpetas = document.getElementById('contadorCarpetas');
+    const contadorCedulas = document.getElementById('contadorCedulas');
     const mensajeEstado = document.getElementById('mensajeEstado');
     const textarea = document.getElementById('cedulas_multiple');
 
@@ -455,7 +434,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btnConsultar.disabled = true;
         btnConsultar.innerHTML = '<span class="loading"></span> Consultando...';
 
-        fetch('{{ route("solo_vista.consultar.carpeta") }}', {
+        fetch('{{ route("solo_vista.consultar.pdf_unificado") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -476,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
             cuerpoTabla.innerHTML = '';
             let cedulasValidas = [];
             let totalEncontrados = 0;
-            let totalConArchivos = 0;
+            let totalConArchivosH = 0;
 
             const resultados = data.resultados;
             for (const [cedula, info] of Object.entries(resultados)) {
@@ -497,21 +476,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 totalEncontrados++;
-                const tieneArchivos = info.total_archivos > 0;
-                if (tieneArchivos) {
-                    totalConArchivos++;
+                const tieneArchivosH = info.total_archivos_h > 0;
+                if (tieneArchivosH) {
+                    totalConArchivosH++;
                     cedulasValidas.push(cedula);
                 }
 
-let examenesHtml = '';
-if (info.examenes && info.examenes.length > 0) {
-    examenesHtml = info.examenes.map(e => {
-        const nombreDescriptivo = obtenerNombreExamen(e.nombre);
-        return `<span class="badge-examen">${nombreDescriptivo}</span>`;
-    }).join('');
-} else {
-    examenesHtml = '<span style="color:#6c757d;font-size:0.8rem;">Sin exámenes</span>';
-}
+                let examenesHtml = '';
+                if (info.examenes_h && info.examenes_h.length > 0) {
+                    examenesHtml = info.examenes_h.map(e => 
+                        `<span class="badge-examen">${e.nombre}</span>`
+                    ).join('');
+                } else {
+                    examenesHtml = '<span style="color:#6c757d;font-size:0.8rem;">Sin archivos H</span>';
+                }
 
                 fila.innerHTML = `
                     <td><strong>${cedula}</strong></td>
@@ -523,9 +501,9 @@ if (info.examenes && info.examenes.length > 0) {
                         <div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;">${examenesHtml}</div>
                     </td>
                     <td style="text-align:center;">
-                        ${tieneArchivos 
-                            ? `<span class="badge-ok">✅ ${info.total_archivos} archivos</span>`
-                            : `<span class="badge-warning">⚠️ Sin archivos</span>`
+                        ${tieneArchivosH 
+                            ? `<span class="badge-ok">✅ ${info.total_archivos_h} archivos</span>`
+                            : `<span class="badge-warning">⚠️ Sin archivos H</span>`
                         }
                     </td>
                 `;
@@ -535,14 +513,14 @@ if (info.examenes && info.examenes.length > 0) {
             resultadosPanel.style.display = 'block';
 
             if (cedulasValidas.length > 0) {
-                btnDescargar.disabled = false;
-                contadorCarpetas.textContent = `${cedulasValidas.length} carpeta(s)`;
-                mensajeEstado.innerHTML = `✅ ${totalConArchivos} de ${totalEncontrados} cédulas tienen archivos disponibles para descargar.`;
+                btnGenerar.disabled = false;
+                contadorCedulas.textContent = `${cedulasValidas.length} cédula(s)`;
+                mensajeEstado.innerHTML = `✅ ${totalConArchivosH} de ${totalEncontrados} cédulas tienen archivos H para incluir en el PDF.`;
                 cedulasSeleccionadas.value = cedulasValidas.join(',');
             } else {
-                btnDescargar.disabled = true;
-                contadorCarpetas.textContent = '0 carpetas';
-                mensajeEstado.innerHTML = '⚠️ Ninguna cédula tiene archivos disponibles para descargar.';
+                btnGenerar.disabled = true;
+                contadorCedulas.textContent = '0 cédulas';
+                mensajeEstado.innerHTML = '⚠️ Ninguna cédula tiene archivos con prefijo H disponibles.';
                 cedulasSeleccionadas.value = '';
             }
         })
@@ -554,7 +532,6 @@ if (info.examenes && info.examenes.length > 0) {
         });
     });
 });
-
 </script>
 </body>
 </html>
