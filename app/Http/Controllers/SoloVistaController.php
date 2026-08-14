@@ -645,81 +645,76 @@ public function buscar(Request $request)
  */
 private function unirPdfs($archivosPdf, $rutaSalida)
 {
-    // ✅ BUSCAR LA RUTA CORRECTA DE FPDF
-    $fpdfPaths = [
-        base_path('vendor/setasign/fpdf/fpdf.php'),
-        base_path('vendor/setasign/fpdf/src/Fpdf.php'),
-    ];
+    // ✅ RUTA CORRECTA PARA FPDF v1.8.2
+    $fpdfPath = base_path('vendor/setasign/fpdf/fpdf.php');
     
-    $fpdfPath = null;
-    foreach ($fpdfPaths as $path) {
-        if (file_exists($path)) {
-            $fpdfPath = $path;
-            break;
-        }
+    // ✅ RUTA CORRECTA PARA FPDI
+    $fpdiPath = base_path('vendor/setasign/fpdi/src/Fpdi.php');
+    
+    // 🔥 VERIFICAR QUE EXISTAN
+    if (!file_exists($fpdfPath)) {
+        throw new \Exception('No se encontró FPDF en: ' . $fpdfPath);
     }
     
-    if (!$fpdfPath) {
-        throw new \Exception('No se encontró FPDF. Verifica: vendor/setasign/fpdf/');
+    if (!file_exists($fpdiPath)) {
+        throw new \Exception('No se encontró FPDI en: ' . $fpdiPath);
     }
     
+    // 🔥 CARGAR LAS LIBRERÍAS
     require_once $fpdfPath;
+    require_once $fpdiPath;
     
-    // ✅ BUSCAR LA RUTA CORRECTA DE FPDI
-    $fpdiPaths = [
-        base_path('vendor/setasign/fpdi/src/Fpdi.php'),
-        base_path('vendor/setasign/fpdi/Fpdi.php'),
-    ];
-    
-    $fpdiPath = null;
-    foreach ($fpdiPaths as $path) {
-        if (file_exists($path)) {
-            $fpdiPath = $path;
-            break;
-        }
+    // 🔥 VERIFICAR QUE FPDF SE CARGÓ
+    if (!class_exists('FPDF')) {
+        throw new \Exception('FPDF no se pudo cargar correctamente');
     }
     
-    if ($fpdiPath) {
-        require_once $fpdiPath;
-    }
-    
-    // ✅ CREAR INSTANCIA DE FPDI
+    // ✅ CREAR INSTANCIA DE FPDI (usa FPDF internamente)
     $pdf = new \setasign\Fpdi\Fpdi();
     
+    // Recorrer todos los archivos PDF
     foreach ($archivosPdf as $archivo) {
         $ruta = $archivo['ruta'];
         
         if (!file_exists($ruta)) {
-            Log::warning('Archivo no encontrado: ' . $ruta);
+            \Log::warning('Archivo no encontrado: ' . $ruta);
             continue;
         }
         
         try {
+            // Importar el PDF
             $pageCount = $pdf->setSourceFile($ruta);
             
+            // Importar cada página
             for ($i = 1; $i <= $pageCount; $i++) {
                 $template = $pdf->importPage($i);
                 $size = $pdf->getTemplateSize($template);
                 
-                $pdf->AddPage($size['orientation'] ?? 'P', [$size['width'] ?? 210, $size['height'] ?? 297]);
+                // Agregar página con el tamaño del original
+                $pdf->AddPage(
+                    $size['orientation'] ?? 'P',
+                    [$size['width'] ?? 210, $size['height'] ?? 297]
+                );
                 $pdf->useTemplate($template);
             }
             
         } catch (\Exception $e) {
-            Log::error('Error al importar PDF ' . basename($ruta) . ': ' . $e->getMessage());
+            \Log::error('Error al importar PDF ' . basename($ruta) . ': ' . $e->getMessage());
             continue;
         }
     }
     
+    // Guardar el PDF combinado
     $pdf->Output('F', $rutaSalida);
     
     if (!file_exists($rutaSalida)) {
         throw new \Exception('No se pudo generar el PDF combinado');
     }
 }
-    /**
-     * Elimina recursivamente un directorio
-     */
+
+
+
+
     private function eliminarDirectorio($directorio)
     {
         if (!is_dir($directorio)) return;
