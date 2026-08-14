@@ -640,37 +640,55 @@ public function buscar(Request $request)
         }
     }
 
+/**
+ * Une múltiples archivos PDF en uno solo usando FPDI + FPDF
+ */
 private function unirPdfs($archivosPdf, $rutaSalida)
 {
-    // Verificar que la clase FPDI existe
-    if (!class_exists('\setasign\Fpdi\Fpdi')) {
-        throw new \Exception('La librería FPDI no está instalada. Ejecuta: composer require setasign/fpdi');
+    // ✅ CARGAR FPDF EXPLÍCITAMENTE
+    require_once base_path('vendor/setasign/fpdf/fpdf.php');
+    
+    // ✅ VERIFICAR QUE FPDI EXISTA
+    if (!class_exists('setasign\Fpdi\Fpdi')) {
+        require_once base_path('vendor/setasign/fpdi/src/Fpdi.php');
     }
     
-    $pdf = new \setasign\Fpdi\Fpdi();  // ← ESTO ES CORRECTO
+    // ✅ CREAR INSTANCIA DE FPDI (EXTIENDE FPDF)
+    $pdf = new \setasign\Fpdi\Fpdi();
     
     foreach ($archivosPdf as $archivo) {
         $ruta = $archivo['ruta'];
         
-        if (!file_exists($ruta)) continue;
+        if (!file_exists($ruta)) {
+            Log::warning('Archivo no encontrado: ' . $ruta);
+            continue;
+        }
         
         try {
+            // Obtener el número de páginas
             $pageCount = $pdf->setSourceFile($ruta);
             
+            // Importar cada página
             for ($i = 1; $i <= $pageCount; $i++) {
                 $template = $pdf->importPage($i);
                 $size = $pdf->getTemplateSize($template);
                 
-                $pdf->AddPage($size['orientation'] ?? 'P', [$size['width'], $size['height']]);
+                $pdf->AddPage($size['orientation'] ?? 'P', [$size['width'] ?? 210, $size['height'] ?? 297]);
                 $pdf->useTemplate($template);
             }
+            
         } catch (\Exception $e) {
-            Log::error('Error al importar PDF: ' . $e->getMessage());
-            // Continuar con el siguiente archivo
+            Log::error('Error al importar PDF ' . basename($ruta) . ': ' . $e->getMessage());
+            continue;
         }
     }
     
+    // Guardar el PDF combinado
     $pdf->Output('F', $rutaSalida);
+    
+    if (!file_exists($rutaSalida)) {
+        throw new \Exception('No se pudo generar el PDF combinado');
+    }
 }
 
     /**
