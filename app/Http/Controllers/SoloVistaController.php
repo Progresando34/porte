@@ -645,15 +645,45 @@ public function buscar(Request $request)
  */
 private function unirPdfs($archivosPdf, $rutaSalida)
 {
-    // ✅ CARGAR FPDF EXPLÍCITAMENTE
-    require_once base_path('vendor/setasign/fpdf/fpdf.php');
+    // ✅ BUSCAR LA RUTA CORRECTA DE FPDF
+    $fpdfPaths = [
+        base_path('vendor/setasign/fpdf/fpdf.php'),
+        base_path('vendor/setasign/fpdf/src/Fpdf.php'),
+    ];
     
-    // ✅ VERIFICAR QUE FPDI EXISTA
-    if (!class_exists('setasign\Fpdi\Fpdi')) {
-        require_once base_path('vendor/setasign/fpdi/src/Fpdi.php');
+    $fpdfPath = null;
+    foreach ($fpdfPaths as $path) {
+        if (file_exists($path)) {
+            $fpdfPath = $path;
+            break;
+        }
     }
     
-    // ✅ CREAR INSTANCIA DE FPDI (EXTIENDE FPDF)
+    if (!$fpdfPath) {
+        throw new \Exception('No se encontró FPDF. Verifica: vendor/setasign/fpdf/');
+    }
+    
+    require_once $fpdfPath;
+    
+    // ✅ BUSCAR LA RUTA CORRECTA DE FPDI
+    $fpdiPaths = [
+        base_path('vendor/setasign/fpdi/src/Fpdi.php'),
+        base_path('vendor/setasign/fpdi/Fpdi.php'),
+    ];
+    
+    $fpdiPath = null;
+    foreach ($fpdiPaths as $path) {
+        if (file_exists($path)) {
+            $fpdiPath = $path;
+            break;
+        }
+    }
+    
+    if ($fpdiPath) {
+        require_once $fpdiPath;
+    }
+    
+    // ✅ CREAR INSTANCIA DE FPDI
     $pdf = new \setasign\Fpdi\Fpdi();
     
     foreach ($archivosPdf as $archivo) {
@@ -665,10 +695,8 @@ private function unirPdfs($archivosPdf, $rutaSalida)
         }
         
         try {
-            // Obtener el número de páginas
             $pageCount = $pdf->setSourceFile($ruta);
             
-            // Importar cada página
             for ($i = 1; $i <= $pageCount; $i++) {
                 $template = $pdf->importPage($i);
                 $size = $pdf->getTemplateSize($template);
@@ -683,14 +711,12 @@ private function unirPdfs($archivosPdf, $rutaSalida)
         }
     }
     
-    // Guardar el PDF combinado
     $pdf->Output('F', $rutaSalida);
     
     if (!file_exists($rutaSalida)) {
         throw new \Exception('No se pudo generar el PDF combinado');
     }
 }
-
     /**
      * Elimina recursivamente un directorio
      */
