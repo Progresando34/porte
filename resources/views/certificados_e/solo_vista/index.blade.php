@@ -684,9 +684,7 @@
 <a href="{{ url('/solo-vista/ver-documentos/' . $cedula) }}" target="_blank" class="view-btn" style="width: 100%; text-decoration: none; display: inline-block; text-align: center;">
     Ver {{ count($documentos) }} documento(s)
 </a>
-
-
-                            
+                   
                             <ul class="documentos-lista">
                                 @foreach($documentos as $doc)
                                     <li>
