@@ -587,7 +587,7 @@ public function buscar(Request $request)
                     
                     $prefijo = $this->extraerPrefijo($archivo);
                     
-                    // SOLO ARCHIVOS CON PREFIJO H
+                    /* SOLO ARCHIVOS CON PREFIJO H
                     if (strtoupper($prefijo) === 'H') {
                         $cedulaTieneH = true;
                         $archivosPdf[] = [
@@ -596,7 +596,20 @@ public function buscar(Request $request)
                             'cedula' => $cedula
                         ];
                         $archivosEncontrados++;
-                    }
+                   */ }
+
+
+                   // SOLO ARCHIVOS CON PREFIJO A o EV
+if (in_array(strtoupper($prefijo), ['A', 'EV'])) {
+    $cedulaTieneH = true;
+    $archivosPdf[] = [
+        'ruta' => $rutaCompleta,
+        'nombre' => $archivo,
+        'cedula' => $cedula
+    ];
+    $archivosEncontrados++;
+}
+
                 }
                 
                 if ($cedulaTieneH) {
