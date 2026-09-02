@@ -596,7 +596,7 @@ public function buscar(Request $request)
                             'cedula' => $cedula
                         ];
                         $archivosEncontrados++;
-                   */ }
+                   */ 
 
 
                    // SOLO ARCHIVOS CON PREFIJO A o EV
