@@ -229,188 +229,735 @@ public function buscar(Request $request)
         return view('certificados_e.solo_vista.carpeta_completa', compact('prefijosPermitidos'));
     }
 
-    /**
-     * Consulta para la vista de Carpeta Completa (SOLO AJAX)
-     */
-    public function consultarCarpeta(Request $request)
-    {
-        try {
-            $cedulasTexto = $request->input('cedulas_multiple', '');
-            $cedulas = array_filter(array_map('trim', explode("\n", $cedulasTexto)));
-            
-            if (empty($cedulas)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se ingresaron cédulas válidas'
-                ], 400);
-            }
-            
-            $resultados = [];
-            $prefijosPermitidos = $this->getUserAllowedPrefixes();
-            
-            foreach ($cedulas as $cedula) {
-                $cita = CitaRecibida::where('cedula', $cedula)->first();
-                
-                if (!$cita) {
-                    $resultados[$cedula] = [
-                        'encontrado' => false,
-                        'mensaje' => 'No se encontró registro para esta cédula'
-                    ];
-                    continue;
-                }
-                
-                $carpeta = storage_path('app/public/RESULTADOS/' . $cedula);
-                $archivos = [];
-                
-                if (is_dir($carpeta)) {
-                    $archivosLista = scandir($carpeta);
-                    foreach ($archivosLista as $archivo) {
-                        if ($archivo === '.' || $archivo === '..') continue;
-                        
-                        $prefijo = $this->extraerPrefijo($archivo);
-                        if (in_array(strtoupper($prefijo), $prefijosPermitidos)) {
-                            $archivos[] = [
-                                'nombre' => $archivo,
-                                'prefijo' => strtoupper($prefijo)
-                            ];
-                        }
-                    }
-                    sort($archivos);
-                }
-                
-                $resultados[$cedula] = [
-                    'encontrado' => true,
-                    'cedula' => $cedula,
-                    'nombre' => $cita->nombre ?? 'N/A',
-                    'fecha' => $cita->fecha ? date('d/m/Y', strtotime($cita->fecha)) : 'N/A',
-                    'nit_empresa' => $cita->nit_empresa ?? 'N/A',
-                    'nombre_empresa' => $cita->nombre_empresa ?? 'N/A',
-                    'total_archivos' => count($archivos),
-                    'examenes' => $archivos
-                ];
-            }
-            
-            return response()->json([
-                'success' => true,
-                'resultados' => $resultados
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error en consultarCarpeta: ' . $e->getMessage());
+
+
+//cambio temporal 
+
+/**
+ * Consulta para la vista de Carpeta Completa
+ *
+ * REGLA:
+ * Solo mostrar PDFs:
+ * - A...
+ * - EV...
+ *
+ * Y siempre tomados EXCLUSIVAMENTE de:
+ *
+ * RESULTADOS/{CEDULA}
+ */
+public function consultarCarpeta(Request $request)
+{
+    try {
+
+        $cedulasTexto = $request->input('cedulas_multiple', '');
+
+        /*
+         * Las cédulas vienen una por línea.
+         */
+        $cedulas = array_filter(
+            array_map('trim', explode("\n", $cedulasTexto))
+        );
+
+        /*
+         * Eliminar duplicados.
+         */
+        $cedulas = array_values(array_unique($cedulas));
+
+        if (empty($cedulas)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al consultar: ' . $e->getMessage()
-            ], 500);
+                'message' => 'No se ingresaron cédulas válidas'
+            ], 400);
         }
-    }
 
-    /**
-     * Descarga la carpeta completa (DESDE LA VISTA INDEPENDIENTE)
-     */
-    public function descargarCarpetaCompleta(Request $request)
-    {
-        try {
-            $cedulasTexto = $request->input('cedulas', '');
-            $cedulas = array_filter(array_map('trim', explode(',', $cedulasTexto)));
-            
-            if (empty($cedulas)) {
-                return back()->with('mensaje', 'No se seleccionaron cédulas para descargar');
+        $resultados = [];
+
+        foreach ($cedulas as $cedula) {
+
+            /*
+             * ========================================================
+             * VALIDAR CÉDULA
+             * ========================================================
+             *
+             * Evitamos valores que puedan utilizarse para manipular
+             * rutas del servidor.
+             */
+            if (!preg_match('/^\d+$/', $cedula)) {
+
+                $resultados[$cedula] = [
+                    'encontrado' => false,
+                    'mensaje' => 'La cédula no tiene un formato válido'
+                ];
+
+                continue;
             }
-            
-            $tempDir = storage_path('app/temp/' . uniqid('carpeta_completa_'));
-            if (!is_dir($tempDir)) {
-                mkdir($tempDir, 0777, true);
+
+            /*
+             * ========================================================
+             * BUSQUEDA EXACTA EN BASE DE DATOS
+             * ========================================================
+             *
+             * IMPORTANTE:
+             * NO usamos LIKE.
+             *
+             * Esto garantiza que 12345 no encuentre 123456.
+             */
+            $cita = CitaRecibida::where('cedula', $cedula)->first();
+
+            if (!$cita) {
+
+                $resultados[$cedula] = [
+                    'encontrado' => false,
+                    'mensaje' => 'No se encontró registro para esta cédula'
+                ];
+
+                continue;
             }
-            
-            $carpetasIncluidas = 0;
-            $errores = [];
-            $prefijosPermitidos = $this->getUserAllowedPrefixes();
-            
-            foreach ($cedulas as $cedula) {
-                $cita = CitaRecibida::where('cedula', $cedula)->first();
-                
-                if (!$cita) {
-                    $errores[] = "Cédula {$cedula}: No existe en la base de datos";
-                    continue;
-                }
-                
-                $carpetaOrigen = storage_path('app/public/RESULTADOS/' . $cedula);
-                
-                if (!is_dir($carpetaOrigen)) {
-                    $errores[] = "Cédula {$cedula}: La carpeta de resultados no existe";
-                    continue;
-                }
-                
-                if (basename($carpetaOrigen) !== $cedula) {
-                    $errores[] = "Cédula {$cedula}: La carpeta no coincide con la cédula";
-                    continue;
-                }
-                
-                $archivos = scandir($carpetaOrigen);
-                $archivosValidos = [];
-                
-                foreach ($archivos as $archivo) {
-                    if ($archivo === '.' || $archivo === '..') continue;
-                    
-                    $rutaCompleta = $carpetaOrigen . '/' . $archivo;
-                    
-                    if (!is_file($rutaCompleta)) continue;
-                    
-                    $prefijo = $this->extraerPrefijo($archivo);
-                    if (!in_array(strtoupper($prefijo), $prefijosPermitidos)) {
+
+            /*
+             * ========================================================
+             * CARPETA EXCLUSIVA DE ESTA CÉDULA
+             * ========================================================
+             *
+             * Ejemplo:
+             *
+             * RESULTADOS/123456789/
+             */
+            $carpeta = storage_path(
+                'app/public/RESULTADOS/' . $cedula
+            );
+
+            $archivos = [];
+
+            if (is_dir($carpeta)) {
+
+                $archivosLista = scandir($carpeta);
+
+                foreach ($archivosLista as $archivo) {
+
+                    if ($archivo === '.' || $archivo === '..') {
                         continue;
                     }
-                    
-                    $archivosValidos[] = $archivo;
+
+                    $rutaCompleta =
+                        $carpeta . DIRECTORY_SEPARATOR . $archivo;
+
+                    /*
+                     * Solo archivos.
+                     * No permitir subcarpetas.
+                     */
+                    if (!is_file($rutaCompleta)) {
+                        continue;
+                    }
+
+                    /*
+                     * SOLO PDF.
+                     */
+                    $extension = strtolower(
+                        pathinfo($archivo, PATHINFO_EXTENSION)
+                    );
+
+                    if ($extension !== 'pdf') {
+                        continue;
+                    }
+
+                    /*
+                     * ====================================================
+                     * SOLO PREFIJOS A Y EV
+                     * ====================================================
+                     */
+                    $prefijo = strtoupper(
+                        $this->extraerPrefijo($archivo)
+                    );
+
+                    if ($prefijo !== 'A' && $prefijo !== 'EV') {
+                        continue;
+                    }
+
+                    /*
+                     * El archivo fue encontrado dentro de:
+                     *
+                     * RESULTADOS/{CEDULA}
+                     *
+                     * por lo tanto pertenece a esta consulta.
+                     */
+                    $archivos[] = [
+                        'nombre' => $archivo,
+                        'prefijo' => $prefijo
+                    ];
                 }
-                
-                if (empty($archivosValidos)) {
-                    $errores[] = "Cédula {$cedula}: No tiene archivos válidos con los prefijos permitidos";
+
+                /*
+                 * Orden natural por nombre.
+                 */
+                usort($archivos, function ($a, $b) {
+                    return strnatcasecmp(
+                        $a['nombre'],
+                        $b['nombre']
+                    );
+                });
+            }
+
+            /*
+             * ========================================================
+             * RESULTADO DE ESTA CÉDULA
+             * ========================================================
+             */
+            $resultados[$cedula] = [
+                'encontrado' => true,
+                'cedula' => $cedula,
+                'nombre' => $cita->nombre ?? 'N/A',
+                'fecha' => $cita->fecha
+                    ? date('d/m/Y', strtotime($cita->fecha))
+                    : 'N/A',
+                'nit_empresa' => $cita->nit_empresa ?? 'N/A',
+                'nombre_empresa' => $cita->nombre_empresa ?? 'N/A',
+                'total_archivos' => count($archivos),
+                'examenes' => $archivos
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'resultados' => $resultados
+        ]);
+
+    } catch (\Exception $e) {
+
+        Log::error(
+            'Error en consultarCarpeta: ' .
+            $e->getMessage()
+        );
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al consultar: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+
+
+
+
+
+//2do cambio temporal
+/**
+ * Descarga la carpeta completa.
+ *
+ * ESTRUCTURA FINAL:
+ *
+ * Carpeta_Completa.zip
+ * │
+ * ├── 123456789/
+ * │   ├── A_123456789.pdf
+ * │   └── EV_123456789.pdf
+ * │
+ * ├── 987654321/
+ * │   ├── A_987654321.pdf
+ * │   └── EV_987654321.pdf
+ * │
+ * └── 555555555/
+ *     └── A_555555555.pdf
+ *
+ *
+ * REGLA DE ORO:
+ *
+ * Los archivos de una cédula SOLO pueden salir de:
+ *
+ * RESULTADOS/{CEDULA}
+ *
+ * y SOLO pueden ser:
+ *
+ * A*.pdf
+ * EV*.pdf
+ *
+ * Nunca se mezclan documentos entre cédulas.
+ */
+public function descargarCarpetaCompleta(Request $request)
+{
+    try {
+
+        /*
+         * ============================================================
+         * 1. RECIBIR LAS CÉDULAS
+         * ============================================================
+         *
+         * El frontend actualmente envía:
+         *
+         * 123456789,987654321,555555555
+         */
+        $cedulasTexto = $request->input('cedulas', '');
+
+        $cedulas = array_filter(
+            array_map('trim', explode(',', $cedulasTexto))
+        );
+
+        /*
+         * Eliminar cédulas repetidas.
+         */
+        $cedulas = array_values(array_unique($cedulas));
+
+        if (empty($cedulas)) {
+
+            return back()->with(
+                'mensaje',
+                'No se seleccionaron cédulas para descargar'
+            );
+        }
+
+        /*
+         * ============================================================
+         * 2. CREAR DIRECTORIO TEMPORAL
+         * ============================================================
+         */
+
+        $tempDir = storage_path(
+            'app/temp/' .
+            uniqid('carpeta_completa_', true)
+        );
+
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0777, true);
+        }
+
+        $carpetasIncluidas = 0;
+        $errores = [];
+
+        /*
+         * ============================================================
+         * 3. PROCESAR CADA CÉDULA POR SEPARADO
+         * ============================================================
+         */
+
+        foreach ($cedulas as $cedula) {
+
+            /*
+             * ========================================================
+             * VALIDACIÓN DE CÉDULA
+             * ========================================================
+             */
+
+            if (!preg_match('/^\d+$/', $cedula)) {
+
+                $errores[] =
+                    "Cédula {$cedula}: formato inválido";
+
+                continue;
+            }
+
+            /*
+             * ========================================================
+             * BUSCAR PERSONA EN BASE DE DATOS
+             * ========================================================
+             *
+             * IMPORTANTE:
+             *
+             * Coincidencia EXACTA.
+             *
+             * NO:
+             *
+             * LIKE "%{$cedula}%"
+             */
+            $cita = CitaRecibida::where(
+                'cedula',
+                $cedula
+            )->first();
+
+            if (!$cita) {
+
+                $errores[] =
+                    "Cédula {$cedula}: No existe en la base de datos";
+
+                continue;
+            }
+
+            /*
+             * ========================================================
+             * CARPETA DE ORIGEN
+             * ========================================================
+             *
+             * Esta es la ÚNICA ubicación de donde se pueden sacar
+             * los archivos de esta persona.
+             *
+             * RESULTADOS/123456789/
+             */
+            $carpetaOrigen = storage_path(
+                'app/public/RESULTADOS/' . $cedula
+            );
+
+            if (!is_dir($carpetaOrigen)) {
+
+                $errores[] =
+                    "Cédula {$cedula}: La carpeta de resultados no existe";
+
+                continue;
+            }
+
+            /*
+             * ========================================================
+             * VERIFICACIÓN DEL NOMBRE DE LA CARPETA
+             * ========================================================
+             *
+             * Debe llamarse exactamente igual a la cédula.
+             */
+            if (basename($carpetaOrigen) !== $cedula) {
+
+                $errores[] =
+                    "Cédula {$cedula}: La carpeta de origen no coincide con la cédula";
+
+                continue;
+            }
+
+            /*
+             * ========================================================
+             * OBTENER RUTA REAL DE LA CARPETA
+             * ========================================================
+             */
+
+            $carpetaOrigenReal = realpath($carpetaOrigen);
+
+            if ($carpetaOrigenReal === false) {
+
+                $errores[] =
+                    "Cédula {$cedula}: No se pudo validar la carpeta de origen";
+
+                continue;
+            }
+
+            /*
+             * ========================================================
+             * LEER SOLO ESTA CARPETA
+             * ========================================================
+             */
+
+            $archivos = scandir($carpetaOrigen);
+
+            $archivosValidos = [];
+
+            foreach ($archivos as $archivo) {
+
+                if ($archivo === '.' || $archivo === '..') {
                     continue;
                 }
-                
-                $carpetaDestino = $tempDir . '/' . $cedula;
-                if (!is_dir($carpetaDestino)) {
-                    mkdir($carpetaDestino, 0777, true);
+
+                /*
+                 * Ruta completa del archivo.
+                 */
+                $rutaCompleta =
+                    $carpetaOrigen .
+                    DIRECTORY_SEPARATOR .
+                    $archivo;
+
+                /*
+                 * ====================================================
+                 * SOLO ARCHIVOS
+                 * ====================================================
+                 */
+                if (!is_file($rutaCompleta)) {
+                    continue;
                 }
-                
-                foreach ($archivosValidos as $archivo) {
-                    $origen = $carpetaOrigen . '/' . $archivo;
-                    $destino = $carpetaDestino . '/' . $archivo;
-                    
-                    if (!copy($origen, $destino)) {
-                        $errores[] = "Cédula {$cedula}: Error al copiar archivo {$archivo}";
-                    }
+
+                /*
+                 * ====================================================
+                 * SOLO PDF
+                 * ====================================================
+                 */
+                $extension = strtolower(
+                    pathinfo($archivo, PATHINFO_EXTENSION)
+                );
+
+                if ($extension !== 'pdf') {
+                    continue;
                 }
-                
+
+                /*
+                 * ====================================================
+                 * SOLO PREFIJO A O EV
+                 * ====================================================
+                 */
+                $prefijo = strtoupper(
+                    $this->extraerPrefijo($archivo)
+                );
+
+                if ($prefijo !== 'A' && $prefijo !== 'EV') {
+                    continue;
+                }
+
+                /*
+                 * ====================================================
+                 * VALIDACIÓN EXTRA DE RUTA
+                 * ====================================================
+                 *
+                 * Verificamos que el archivo realmente esté dentro
+                 * de la carpeta de ESTA cédula.
+                 */
+                $rutaReal = realpath($rutaCompleta);
+
+                if ($rutaReal === false) {
+                    continue;
+                }
+
+                if (
+                    strpos(
+                        $rutaReal,
+                        $carpetaOrigenReal . DIRECTORY_SEPARATOR
+                    ) !== 0
+                ) {
+
+                    $errores[] =
+                        "Cédula {$cedula}: Archivo rechazado por seguridad: {$archivo}";
+
+                    continue;
+                }
+
+                /*
+                 * Guardamos el archivo junto con su ruta de origen.
+                 */
+                $archivosValidos[] = [
+                    'nombre' => $archivo,
+                    'ruta' => $rutaReal,
+                    'cedula' => $cedula
+                ];
+            }
+
+            /*
+             * ========================================================
+             * ORDENAR ARCHIVOS
+             * ========================================================
+             */
+
+            usort($archivosValidos, function ($a, $b) {
+
+                return strnatcasecmp(
+                    $a['nombre'],
+                    $b['nombre']
+                );
+            });
+
+            /*
+             * ========================================================
+             * SI NO TIENE ARCHIVOS A/EV
+             * ========================================================
+             */
+
+            if (empty($archivosValidos)) {
+
+                $errores[] =
+                    "Cédula {$cedula}: No tiene PDFs con prefijo A o EV";
+
+                continue;
+            }
+
+            /*
+             * ========================================================
+             * CREAR CARPETA DESTINO DE LA CÉDULA
+             * ========================================================
+             *
+             * Ejemplo:
+             *
+             * temp/
+             * └── 123456789/
+             */
+            $carpetaDestino =
+                $tempDir .
+                DIRECTORY_SEPARATOR .
+                $cedula;
+
+            if (!is_dir($carpetaDestino)) {
+
+                mkdir(
+                    $carpetaDestino,
+                    0777,
+                    true
+                );
+            }
+
+            /*
+             * ========================================================
+             * COPIAR ARCHIVOS
+             * ========================================================
+             */
+
+            $archivosCopiados = 0;
+
+            foreach ($archivosValidos as $archivo) {
+
+                /*
+                 * MUY IMPORTANTE:
+                 *
+                 * El origen ya fue validado como perteneciente
+                 * exclusivamente a esta cédula.
+                 */
+                $origen = $archivo['ruta'];
+
+                /*
+                 * El destino SIEMPRE es:
+                 *
+                 * temp/{CEDULA}/{ARCHIVO}
+                 */
+                $destino =
+                    $carpetaDestino .
+                    DIRECTORY_SEPARATOR .
+                    $archivo['nombre'];
+
+                /*
+                 * Copiar.
+                 */
+                if (copy($origen, $destino)) {
+
+                    $archivosCopiados++;
+
+                } else {
+
+                    $errores[] =
+                        "Cédula {$cedula}: Error al copiar {$archivo['nombre']}";
+                }
+            }
+
+            /*
+             * ========================================================
+             * SOLO CONTAR CARPETA SI REALMENTE TIENE ARCHIVOS
+             * ========================================================
+             */
+
+            if ($archivosCopiados > 0) {
+
                 $carpetasIncluidas++;
             }
-            
-            if ($carpetasIncluidas === 0) {
-                $this->eliminarDirectorio($tempDir);
-                return back()->with('mensaje', 'No se pudo incluir ninguna carpeta. Errores: ' . implode('; ', $errores));
-            }
-            
-            $zipNombre = 'Carpeta_Completa_' . date('Y-m-d_H-i-s') . '.zip';
-            $zipRuta = storage_path('app/temp/' . $zipNombre);
-            
-            $zip = new \ZipArchive();
-            if ($zip->open($zipRuta, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-                throw new \Exception('No se pudo crear el archivo ZIP');
-            }
-            
-            $this->agregarDirectorioAZip($tempDir, $zip, '');
-            $zip->close();
-            
-            $this->eliminarDirectorio($tempDir);
-            
-            return response()->download($zipRuta, $zipNombre)->deleteFileAfterSend(true);
-            
-        } catch (\Exception $e) {
-            Log::error('Error en descargarCarpetaCompleta: ' . $e->getMessage());
-            return back()->with('mensaje', 'Error al generar la carpeta completa: ' . $e->getMessage());
         }
+
+        /*
+         * ============================================================
+         * 4. SI NO SE PUDO GENERAR NINGUNA CARPETA
+         * ============================================================
+         */
+
+        if ($carpetasIncluidas === 0) {
+
+            $this->eliminarDirectorio($tempDir);
+
+            $mensaje =
+                'No se pudo incluir ninguna cédula.';
+
+            if (!empty($errores)) {
+
+                $mensaje .=
+                    ' ' .
+                    implode(' | ', $errores);
+            }
+
+            return back()->with(
+                'mensaje',
+                $mensaje
+            );
+        }
+
+        /*
+         * ============================================================
+         * 5. CREAR ZIP
+         * ============================================================
+         */
+
+        $zipNombre =
+            'Carpeta_Completa_' .
+            date('Y-m-d_H-i-s') .
+            '.zip';
+
+        $zipRuta =
+            storage_path(
+                'app/temp/' . $zipNombre
+            );
+
+        $zip = new \ZipArchive();
+
+        if (
+            $zip->open(
+                $zipRuta,
+                \ZipArchive::CREATE |
+                \ZipArchive::OVERWRITE
+            ) !== true
+        ) {
+
+            throw new \Exception(
+                'No se pudo crear el archivo ZIP'
+            );
+        }
+
+        /*
+         * ============================================================
+         * 6. AGREGAR CARPETAS AL ZIP
+         * ============================================================
+         *
+         * Resultado:
+         *
+         * ZIP
+         * ├── 123456789/
+         * ├── 987654321/
+         * └── 555555555/
+         */
+        $this->agregarDirectorioAZip(
+            $tempDir,
+            $zip,
+            ''
+        );
+
+        $zip->close();
+
+        /*
+         * ============================================================
+         * 7. ELIMINAR TEMPORAL
+         * ============================================================
+         */
+
+        $this->eliminarDirectorio(
+            $tempDir
+        );
+
+        /*
+         * ============================================================
+         * 8. DESCARGAR
+         * ============================================================
+         */
+
+        return response()
+            ->download(
+                $zipRuta,
+                $zipNombre
+            )
+            ->deleteFileAfterSend(true);
+
+    } catch (\Exception $e) {
+
+        Log::error(
+            'Error en descargarCarpetaCompleta: ' .
+            $e->getMessage()
+        );
+
+        /*
+         * Intentar limpiar temporal.
+         */
+        if (
+            isset($tempDir) &&
+            is_dir($tempDir)
+        ) {
+
+            $this->eliminarDirectorio(
+                $tempDir
+            );
+        }
+
+        return back()->with(
+            'mensaje',
+            'Error al generar la carpeta completa: ' .
+            $e->getMessage()
+        );
     }
+}
+
+
+
+
 
     /**
      * Agrega recursivamente un directorio a un archivo ZIP
