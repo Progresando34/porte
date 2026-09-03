@@ -483,15 +483,15 @@ public function buscar(Request $request)
                     foreach ($archivosLista as $archivo) {
                         if ($archivo === '.' || $archivo === '..') continue;
                         
-$prefijo = $this->extraerPrefijo($archivo);
-// SOLO ARCHIVOS CON PREFIJO A o EV
-if (in_array(strtoupper($prefijo), ['A', 'EV'])) {
-    $archivosH[] = [
-        'nombre' => $archivo,
-        'prefijo' => strtoupper($prefijo),
-        'ruta' => $carpeta . '/' . $archivo
-    ];
-}
+                        $prefijo = $this->extraerPrefijo($archivo);
+                        // SOLO ARCHIVOS CON PREFIJO H
+                        if (strtoupper($prefijo) === 'H') {
+                            $archivosH[] = [
+                                'nombre' => $archivo,
+                                'prefijo' => 'H',
+                                'ruta' => $carpeta . '/' . $archivo
+                            ];
+                        }
                     }
                     sort($archivosH);
                 }
@@ -587,7 +587,7 @@ if (in_array(strtoupper($prefijo), ['A', 'EV'])) {
                     
                     $prefijo = $this->extraerPrefijo($archivo);
                     
-                    /* SOLO ARCHIVOS CON PREFIJO H
+                    // SOLO ARCHIVOS CON PREFIJO H
                     if (strtoupper($prefijo) === 'H') {
                         $cedulaTieneH = true;
                         $archivosPdf[] = [
@@ -596,20 +596,7 @@ if (in_array(strtoupper($prefijo), ['A', 'EV'])) {
                             'cedula' => $cedula
                         ];
                         $archivosEncontrados++;
-                   */ 
-
-
-                   // SOLO ARCHIVOS CON PREFIJO A o EV
-if (in_array(strtoupper($prefijo), ['A', 'EV'])) {
-    $cedulaTieneH = true;
-    $archivosPdf[] = [
-        'ruta' => $rutaCompleta,
-        'nombre' => $archivo,
-        'cedula' => $cedula
-    ];
-    $archivosEncontrados++;
-}
-
+                    }
                 }
                 
                 if ($cedulaTieneH) {
