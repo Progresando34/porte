@@ -110,7 +110,7 @@ Route::post('/perfil/crear', function(Request $request) {
 // ============================================
 // 🗑️ ELIMINACIÓN DE ARCHIVOS CON PREFIJO 's'
 // ============================================
-Route::delete('/eliminar/archivos-prefijo-s', function(Request $request) {
+Route::delete('/eliminar/archivos-prefijo-s', function() {
     try {
         $rutaBase = storage_path('app/public/RESULTADOS');
         $eliminados = 0;
@@ -118,7 +118,6 @@ Route::delete('/eliminar/archivos-prefijo-s', function(Request $request) {
         $archivosEncontrados = [];
         $archivosOmitidos = [];
         $fechaMinima = '20260514'; // 🔥 FECHA MÍNIMA
-        $cedulaFiltro = $request->query('cedula');
         
         // Verificar que la carpeta existe
         if (!is_dir($rutaBase)) {
@@ -129,18 +128,7 @@ Route::delete('/eliminar/archivos-prefijo-s', function(Request $request) {
         }
         
         // Recorrer todas las carpetas de cédulas
-      // 🔥 NUEVO: si viene ?cedula=, procesar solo esa carpeta
-if ($cedulaFiltro) {
-    $carpetas = [$rutaBase . '/' . basename($cedulaFiltro)];
-    Log::info("🗑️ Eliminando s*.pdf SOLO de cédula: {$cedulaFiltro}");
-} else {
-    $carpetas = glob($rutaBase . '/*', GLOB_ONLYDIR);
-    Log::warning("🗑️ Eliminando s*.pdf de TODAS las cédulas (SIN filtro)");
-}
-
-// Recorrer carpetas
-foreach ($carpetas as $carpeta) {
-    if (!is_dir($carpeta)) continue;
+        foreach (glob($rutaBase . '/*', GLOB_ONLYDIR) as $carpeta) {
             $cedula = basename($carpeta);
             
             // Buscar archivos que empiecen con 's'
